@@ -171,7 +171,7 @@ Extrae directamente desde el paper base:
 ---
 
 ## 6. Modelo extendido para Rush Order
-
+-El Rush order debe ser aleatorio en cada iteración para poder entrenar el modelo de predicción.
 ### 6.1 Conjuntos
 
 Trabajos iniciales:

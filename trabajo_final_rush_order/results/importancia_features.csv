@@ -1,0 +1,15 @@
+feature,importancia
+n_terminadas,0.1687
+carga_media,0.1178
+n_proceso,0.1147
+carga_max,0.0866
+holgura_media,0.0793
+rush_tiempo_min,0.0778
+rush_tiempo_medio,0.0721
+saturacion,0.0672
+cmax0,0.0615
+rush_maquinas_factibles,0.0583
+t_frac,0.0516
+n_pendientes,0.0446
+avance_pct,0.0000
+ops_afectadas,0.0000

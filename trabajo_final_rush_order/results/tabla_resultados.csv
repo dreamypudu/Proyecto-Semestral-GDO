@@ -1,0 +1,10 @@
+escenario,estrategia,Cmax,Cr_rush,tiempo_seg,nervousness_N,cambios_maquina_Nm,ops_modificadas,dano,mejora,pct_recuperacion
+1_inicial,-,382.0,-,3.5,0,0,0,-,-,-
+2_rush_sin_recuperacion,insert_end,518.0,518.0,0.0,0.0,0,0,0.0,0.0,0.0
+3_recuperacion_ga_parcial,partial_ga,512.0,512.0,0.7,747.0,7,12,136.0,6.0,4.4
+4_recuperacion_xgboost,stability_ga,518.0,518.0,0.7,0.0,0,0,136.0,0.0,0.0
+estrategia_insert_end,insert_end,518.0,518.0,0.0,0.0,0,0,136.0,0.0,0.0
+estrategia_right_shift,right_shift,518.0,518.0,0.0,0.0,0,0,136.0,0.0,0.0
+estrategia_partial_ga,partial_ga,512.0,512.0,0.6,747.0,7,12,136.0,6.0,4.4
+estrategia_priority_ga,priority_ga,512.0,512.0,0.6,693.0,8,13,136.0,6.0,4.4
+estrategia_stability_ga,stability_ga,518.0,518.0,0.7,0.0,0,0,136.0,0.0,0.0

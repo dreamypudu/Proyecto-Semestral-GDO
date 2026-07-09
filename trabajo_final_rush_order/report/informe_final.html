@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="es" xml:lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Informe final - FJSSP Rush Order</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Informe final - FJSSP Rush Order</h1>
+</header>
+<h1
+id="scheduling-dinámico-de-un-flexible-job-shop-ante-un-rush-order-en-un-entorno-digital-twin">Scheduling
+dinámico de un Flexible Job Shop ante un Rush Order en un entorno
+Digital Twin</h1>
+<p><strong>Curso:</strong> Gestión de Operaciones — Trabajo final
+<strong>Caso:</strong> perturbación <em>Rush Order</em> en t* = Cmax₀/2
+<strong>Fecha:</strong> julio 2026</p>
+<hr />
+<h2 id="introducción">1. Introducción</h2>
+<p>En manufactura personalizada, el programa de producción rara vez se
+ejecuta tal como se planificó: fallas de máquinas, atrasos y llegada de
+pedidos urgentes obligan a reprogramar en línea. El paradigma
+<strong>Digital Twin (DT)</strong> aborda este problema manteniendo una
+réplica digital del taller sincronizada con el estado físico, de modo
+que las perturbaciones se detectan al instante y disparan mecanismos de
+re-optimización (Liu et al., 2022).</p>
+<p>Este trabajo aborda el <strong>Flexible Job-Shop Scheduling Problem
+(FJSSP)</strong> del caso de estudio de Liu et al. (2022) — un taller de
+autos personalizados con 8 trabajos, 8 máquinas y 5 operaciones por
+trabajo — sometido a la perturbación <strong>Rush Order</strong>: la
+llegada de un pedido urgente en el instante t* = Cmax₀/2, donde Cmax₀ es
+el makespan del programa inicial.</p>
+<p><strong>Objetivo:</strong> diseñar e implementar una metodología que
+(i) resuelva el scheduling inicial, (ii) simule la llegada del rush
+order, (iii) recupere el programa reprogramando solo las operaciones
+pendientes junto al pedido urgente, y (iv) incorpore un modelo
+inteligente (XGBoost) que seleccione la estrategia de rescheduling de
+menor impacto, evaluando el desempeño con métricas cuantitativas
+(makespan, tiempo de término del rush, <em>nervousness</em>, tiempo
+computacional y porcentaje de recuperación).</p>
+<h2 id="marco-teórico">2. Marco teórico</h2>
+<p><strong>FJSSP.</strong> Extiende el job shop clásico permitiendo que
+cada operación se procese en un subconjunto de máquinas factibles, con
+tiempo dependiente de la máquina. Es NP-duro incluso en instancias
+pequeñas, por lo que en la práctica se resuelve con metaheurísticas (Liu
+et al., 2022).</p>
+<p><strong>Digital Twin para monitoreo y decisión.</strong> El DT
+mantiene el estado del taller (avance de operaciones, disponibilidad de
+máquinas, cola de pedidos) sincronizado con el sistema físico. Ante un
+evento dinámico — aquí, la inserción de una nueva orden en el sistema de
+pedidos — el DT lo detecta, actualiza el estado y dispara el
+rescheduling (Liu et al., 2022; Wang et al., 2022).</p>
+<p><strong>Algoritmos genéticos para FJSSP.</strong> La codificación
+estándar de dos segmentos MS+OS (<em>Machine Selection</em> +
+<em>Operation Sequence</em>) representa simultáneamente la asignación de
+máquinas y el orden de las operaciones; con operadores que preservan
+factibilidad (crossover POX, mutación de reasignación e intercambio)
+todo cromosoma decodifica a un schedule factible.</p>
+<p><strong>Rush order insertion.</strong> Cuando llega un pedido
+urgente, las operaciones ya terminadas se congelan, las que están en
+proceso no se interrumpen, y las pendientes se reprograman junto con las
+del pedido urgente (Wang et al., 2022).</p>
+<p><strong>Estabilidad y nervousness.</strong> Reprogramar todo desde
+cero maximiza el desempeño teórico pero desestabiliza el taller (cambios
+de asignación, re-secuenciamientos, replaneación de materiales).
+Moratori et al. (2010) muestran que estrategias tipo <em>match-up</em>
+que restringen los cambios a una ventana parcial logran calidad
+comparable con mucho menor perturbación; ello motiva medir la
+<strong>nervousness</strong> N del programa y usarla como criterio de
+decisión.</p>
+<p><strong>Modelo inteligente.</strong> Se usa <strong>XGBoost</strong>
+(gradient boosting de árboles) como <strong>selector de estrategia de
+rescheduling</strong>: dado el estado del taller en t*, predice qué
+estrategia minimizará una función de impacto Z que combina makespan,
+término del rush y nervousness. Se eligió por su buen desempeño en datos
+tabulares pequeños, su interpretabilidad vía importancia de variables y
+su costo de inferencia despreciable (compatible con decisión en tiempo
+real).</p>
+<h2 id="descripción-del-problema">3. Descripción del problema</h2>
+<p>Taller de ensamblaje de autos personalizados (laboratorio de Liu et
+al., 2022):</p>
+<ul>
+<li><strong>Trabajos:</strong> 8 modelos iniciales (J1–J8); cada uno con
+<strong>5 operaciones</strong> en secuencia fija: chasis, marco, puerta
+izquierda, puerta derecha y cubierta frontal.</li>
+<li><strong>Máquinas:</strong> 8 brazos robóticos (M1–M8). Cada
+operación tiene un subconjunto de máquinas factibles con tiempos
+distintos (Tablas 5 y 6 del paper; transcritas en
+<code>data/datos_base_extraidos.csv</code>).</li>
+<li><strong>Restricciones:</strong> precedencia tecnológica dentro de
+cada trabajo; cada máquina procesa una operación a la vez; sin
+interrupción (<em>non-preemption</em>).</li>
+<li><strong>Métrica principal:</strong> makespan (Cmax).</li>
+<li><strong>Perturbación:</strong> en t* = Cmax₀/2 llega un rush order
+J9 (reedición del modelo 8, igual que el evento dinámico reportado en el
+paper base) que debe integrarse al programa en curso.</li>
+</ul>
+<h2 id="modelo-matemático">4. Modelo matemático</h2>
+<h3 id="modelo-base-fjssp-liu-et-al.-2022">4.1 Modelo base (FJSSP, Liu
+et al. 2022)</h3>
+<p>Conjuntos: trabajos
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>J</mi><mn>0</mn></msup><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mn>8</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">J^0=\{1,\dots,8\}</annotation></semantics></math>,
+máquinas
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mn>8</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">M=\{1,\dots,8\}</annotation></semantics></math>,
+operaciones
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>O</mi><mi>j</mi></msub><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mn>5</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">O_j=\{1,\dots,5\}</annotation></semantics></math>,
+máquinas factibles
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><mo>⊆</mo><mi>M</mi></mrow><annotation encoding="application/x-tex">A_{jh}\subseteq M</annotation></semantics></math>.
+Parámetros: tiempos
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow></msub><annotation encoding="application/x-tex">p_{ijh}</annotation></semantics></math>.
+Variables: asignación
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>x</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow></msub><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">x_{ijh}\in\{0,1\}</annotation></semantics></math>,
+inicios
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><annotation encoding="application/x-tex">s_{jh}</annotation></semantics></math>,
+términos
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><annotation encoding="application/x-tex">c_{jh}</annotation></semantics></math>,
+orden en máquina
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi><mi>k</mi><mi>l</mi></mrow></msub><annotation encoding="application/x-tex">y_{ijhkl}</annotation></semantics></math>,
+makespan
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mi>m</mi><mi>a</mi><mi>x</mi></mrow><annotation encoding="application/x-tex">Cmax</annotation></semantics></math>.</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">min</mi><mo>&#8289;</mo></mrow><mspace width="0.278em"></mspace><mi>C</mi><mi>m</mi><mi>a</mi><mi>x</mi></mrow><annotation encoding="application/x-tex">\min \; Cmax</annotation></semantics></math></p>
+<p>sujeto a: asignación única
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><msub><mi>A</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub></mrow></msub><msub><mi>x</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\sum_{i\in A_{jh}} x_{ijh}=1</annotation></semantics></math>;
+definición de término
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><mo>=</mo><msub><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><mo>+</mo><msub><mo>∑</mo><mi>i</mi></msub><msub><mi>p</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow></msub><msub><mi>x</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow></msub></mrow><annotation encoding="application/x-tex">c_{jh}=s_{jh}+\sum_i p_{ijh}x_{ijh}</annotation></semantics></math>;
+precedencia
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><mo>≤</mo><msub><mi>s</mi><mrow><mi>j</mi><mo>,</mo><mi>h</mi><mo>+</mo><mn>1</mn></mrow></msub></mrow><annotation encoding="application/x-tex">c_{jh}\le s_{j,h+1}</annotation></semantics></math>;
+no solapamiento en cada máquina (par de restricciones disyuntivas con
+constante grande
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math>
+y variable
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi><mi>k</mi><mi>l</mi></mrow></msub><annotation encoding="application/x-tex">y_{ijhkl}</annotation></semantics></math>);
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mi>m</mi><mi>a</mi><mi>x</mi><mo>≥</mo><msub><mi>c</mi><mrow><mi>j</mi><mo>,</mo><msub><mi>h</mi><mi>j</mi></msub></mrow></msub></mrow><annotation encoding="application/x-tex">Cmax \ge c_{j,h_j}</annotation></semantics></math>.</p>
+<h3 id="extensión-rush-order">4.2 Extensión Rush Order</h3>
+<p>En
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>t</mi><mo>*</mo></msup><mo>=</mo><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mn>0</mn></msub><mi>/</mi><mn>2</mn></mrow><annotation encoding="application/x-tex">t^*=Cmax_0/2</annotation></semantics></math>
+llega
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>J</mi><mi>R</mi></msup><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mi>r</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">J^R=\{r\}</annotation></semantics></math>;
+el conjunto pasa a
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mo>=</mo><msup><mi>J</mi><mn>0</mn></msup><mo>∪</mo><msup><mi>J</mi><mi>R</mi></msup></mrow><annotation encoding="application/x-tex">J=J^0\cup J^R</annotation></semantics></math>.
+Del schedule inicial
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>S</mi><mn>0</mn></msup><annotation encoding="application/x-tex">S^0</annotation></semantics></math>
+se conocen
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo>,</mo><msubsup><mi>c</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo>,</mo><msubsup><mi>x</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup></mrow><annotation encoding="application/x-tex">s^0_{jh}, c^0_{jh}, x^0_{ijh}</annotation></semantics></math>.
+Las operaciones se clasifican en:</p>
+<ul>
+<li><strong>Terminadas</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mo stretchy="false" form="prefix">(</mo><mi>j</mi><mo>,</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo><mo>:</mo><msubsup><mi>c</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo>≤</mo><msup><mi>t</mi><mo>*</mo></msup><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">F=\{(j,h): c^0_{jh}\le t^*\}</annotation></semantics></math>
+→ congeladas.</li>
+<li><strong>En proceso</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mo stretchy="false" form="prefix">(</mo><mi>j</mi><mo>,</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo><mo>:</mo><msubsup><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo>&lt;</mo><msup><mi>t</mi><mo>*</mo></msup><mo>&lt;</mo><msubsup><mi>c</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">I=\{(j,h): s^0_{jh}&lt;t^*&lt;c^0_{jh}\}</annotation></semantics></math>
+→ continúan sin interrupción.</li>
+<li><strong>Pendientes</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mo stretchy="false" form="prefix">(</mo><mi>j</mi><mo>,</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo><mo>:</mo><msubsup><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo>≥</mo><msup><mi>t</mi><mo>*</mo></msup><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">P=\{(j,h): s^0_{jh}\ge t^*\}</annotation></semantics></math>
+→ reprogramables.</li>
+<li><strong>Rush</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mo stretchy="false" form="prefix">(</mo><mi>r</mi><mo>,</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">R=\{(r,h)\}</annotation></semantics></math>.
+Conjunto a reprogramar:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Q</mi><mo>=</mo><mi>P</mi><mo>∪</mo><mi>R</mi></mrow><annotation encoding="application/x-tex">Q=P\cup R</annotation></semantics></math>.</li>
+</ul>
+<p>Cada máquina queda disponible en
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>A</mi><mi>i</mi><mi>t</mi></msubsup><mo>=</mo><mrow><mi mathvariant="normal">max</mi><mo>&#8289;</mo></mrow><mo stretchy="false" form="prefix">(</mo><msup><mi>t</mi><mo>*</mo></msup><mo>,</mo><msub><mrow><mi mathvariant="normal">max</mi><mo>&#8289;</mo></mrow><mrow><mo stretchy="false" form="prefix">(</mo><mi>j</mi><mo>,</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo><mo>∈</mo><mi>I</mi><mo>:</mo><msubsup><mi>x</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo>=</mo><mn>1</mn></mrow></msub><msubsup><mi>c</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">A_i^t=\max(t^*, \max_{(j,h)\in I: x^0_{ijh}=1} c^0_{jh})</annotation></semantics></math>
+(o
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>t</mi><mo>*</mo></msup><annotation encoding="application/x-tex">t^*</annotation></semantics></math>
+si no tiene operación en proceso). Las restricciones del modelo base se
+aplican sobre
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Q</mi><annotation encoding="application/x-tex">Q</annotation></semantics></math>,
+agregando:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><mo>≥</mo><msup><mi>t</mi><mo>*</mo></msup></mrow><annotation encoding="application/x-tex">s_{jh}\ge t^*</annotation></semantics></math>;
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><mo>≥</mo><msubsup><mi>A</mi><mi>i</mi><mi>t</mi></msubsup><mo>−</mo><mi>L</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>x</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">s_{jh}\ge A_i^t - L(1-x_{ijh})</annotation></semantics></math>;
+congelamiento
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><mo>=</mo><msubsup><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo>,</mo><mspace width="0.167em"></mspace><msub><mi>c</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><mo>=</mo><msubsup><mi>c</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo>,</mo><mspace width="0.167em"></mspace><msub><mi>x</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow></msub><mo>=</mo><msubsup><mi>x</mi><mrow><mi>i</mi><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mspace width="0.278em"></mspace><mo>∀</mo><mo stretchy="false" form="prefix">(</mo><mi>j</mi><mo>,</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo><mo>∈</mo><mi>F</mi><mo>∪</mo><mi>I</mi></mrow><annotation encoding="application/x-tex">s_{jh}=s^0_{jh},\, c_{jh}=c^0_{jh},\, x_{ijh}=x^0_{ijh}\;\forall (j,h)\in F\cup I</annotation></semantics></math>;
+y para la primera operación pendiente de cada trabajo, precedencia
+respecto del término congelado
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>c</mi><mrow><mi>j</mi><mo>,</mo><mi>h</mi><mo>−</mo><mn>1</mn></mrow><mn>0</mn></msubsup><annotation encoding="application/x-tex">c^0_{j,h-1}</annotation></semantics></math>.</p>
+<h3 id="función-objetivo-extendida-y-nervousness">4.3 Función objetivo
+extendida y nervousness</h3>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">min</mi><mo>&#8289;</mo></mrow><mspace width="0.278em"></mspace><mi>Z</mi><mo>=</mo><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mi>R</mi></msub><mo>+</mo><mi>α</mi><mspace width="0.167em"></mspace><msub><mi>C</mi><mi>r</mi></msub><mo>+</mo><mi>β</mi><mspace width="0.167em"></mspace><mi>N</mi></mrow><annotation encoding="application/x-tex">\min \; Z = Cmax_R + \alpha\, C_r + \beta\, N</annotation></semantics></math></p>
+<p>donde
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mi>r</mi></msub><mo>=</mo><msub><mi>c</mi><mrow><mi>r</mi><mo>,</mo><msub><mi>h</mi><mi>r</mi></msub></mrow></msub></mrow><annotation encoding="application/x-tex">C_r=c_{r,h_r}</annotation></semantics></math>
+es el término del rush order y la nervousness combina cambios de inicio
+y de máquina de las operaciones pendientes:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mo>=</mo><msub><mi>γ</mi><mn>1</mn></msub><munder><munder><mrow><munder><mo>∑</mo><mrow><mo stretchy="false" form="prefix">(</mo><mi>j</mi><mo>,</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo><mo>∈</mo><mi>P</mi></mrow></munder><mo stretchy="false" form="prefix">|</mo><msub><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow></msub><mo>−</mo><msubsup><mi>s</mi><mrow><mi>j</mi><mi>h</mi></mrow><mn>0</mn></msubsup><mo stretchy="false" form="prefix">|</mo></mrow><mo accent="true">⏟</mo></munder><msub><mi>N</mi><mi>s</mi></msub></munder><mo>+</mo><msub><mi>γ</mi><mn>2</mn></msub><munder><munder><mrow><munder><mo>∑</mo><mrow><mo stretchy="false" form="prefix">(</mo><mi>j</mi><mo>,</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo><mo>∈</mo><mi>P</mi></mrow></munder><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>x</mi><mrow><msup><mi>i</mi><mn>0</mn></msup><mi>j</mi><mi>h</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><mo accent="true">⏟</mo></munder><msub><mi>N</mi><mi>m</mi></msub></munder></mrow><annotation encoding="application/x-tex">N = \gamma_1 \underbrace{\sum_{(j,h)\in P}|s_{jh}-s^0_{jh}|}_{N_s} + \gamma_2 \underbrace{\sum_{(j,h)\in P}(1-x_{i^0 jh})}_{N_m}</annotation></semantics></math></p>
+<p>El modelo se resuelve de forma metaheurística (GA); Z se usa como
+fitness en las variantes orientadas a urgencia/estabilidad y como
+criterio de etiquetado del selector inteligente.</p>
+<h2 id="metodología">5. Metodología</h2>
+<h3 id="extracción-de-datos">5.1 Extracción de datos</h3>
+<p>Las Tablas 5 (máquinas factibles) y 6 (tiempos) del paper base se
+transcribieron a <code>data/datos_base_extraidos.csv</code> (8×5 = 40
+operaciones, 81 pares operación-máquina). El rush order canónico J9
+(<code>data/datos_rush_order.csv</code>) es una reedición del modelo 8,
+consistente con el evento “nueva orden del octavo modelo” del paper.</p>
+<h3 id="scheduling-inicial-ga">5.2 Scheduling inicial (GA)</h3>
+<p>Cromosoma segmentado <strong>MS+OS</strong>: MS asigna una máquina
+factible a cada operación; OS es una permutación con repetición de los
+trabajos (40 genes; la k-ésima aparición del trabajo j es su k-ésima
+operación). El <strong>decodificador</strong> programa cada operación en
+el primer hueco factible de su máquina (inserción en huecos), respetando
+precedencia y disponibilidad; el mismo decodificador acepta un estado
+inicial no vacío (ocupación de máquinas y avance de trabajos), lo que
+permite reutilizarlo sin cambios para el rescheduling parcial.
+Operadores: selección por torneo (k=3), crossover POX en OS y uniforme
+en MS, mutación por reasignación de máquina e intercambio de posiciones,
+elitismo. Parámetros: población 120, 300 generaciones, semilla 0.</p>
+<p><em>Justificación del método:</em> el GA es el método de referencia
+del propio paper base (su RLEGA es un GA mejorado), maneja de forma
+natural la codificación mixta asignación+secuencia del FJSSP, y su
+fitness es intercambiable — lo que permite usar el mismo motor para las
+variantes con prioridad de rush y con estabilidad.</p>
+<h3 id="simulación-de-la-perturbación">5.3 Simulación de la
+perturbación</h3>
+<p>En t* = Cmax₀/2 el DT lógico (capa de monitoreo implementada como
+regla sobre el estado del sistema de pedidos) detecta la inserción de
+J9, clasifica las operaciones en F/I/P, congela F∪I, calcula la
+disponibilidad
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>A</mi><mi>i</mi><mi>t</mi></msubsup><annotation encoding="application/x-tex">A_i^t</annotation></semantics></math>
+y construye el subproblema sobre
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Q</mi><mo>=</mo><mi>P</mi><mo>∪</mo><mi>R</mi></mrow><annotation encoding="application/x-tex">Q = P\cup R</annotation></semantics></math>.</p>
+<h3 id="estrategias-de-rescheduling">5.4 Estrategias de
+rescheduling</h3>
+<ol type="1">
+<li><strong>insert_end</strong> (baseline sin recuperación): el programa
+pendiente queda intacto; el rush se agrega al final de cada
+máquina.</li>
+<li><strong>right_shift / inserción simple:</strong> programa pendiente
+intacto; el rush se inserta en los primeros huecos factibles.</li>
+<li><strong>partial_ga:</strong> GA sobre Q minimizando
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mi>R</mi></msub></mrow><annotation encoding="application/x-tex">Cmax_R</annotation></semantics></math>.</li>
+<li><strong>priority_ga:</strong> GA sobre Q minimizando
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mi>R</mi></msub><mo>+</mo><mi>α</mi><msub><mi>C</mi><mi>r</mi></msub></mrow><annotation encoding="application/x-tex">Cmax_R+\alpha C_r</annotation></semantics></math>.</li>
+<li><strong>stability_ga:</strong> GA sobre Q minimizando
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mi>R</mi></msub><mo>+</mo><mi>α</mi><msub><mi>C</mi><mi>r</mi></msub><mo>+</mo><mi>β</mi><mi>N</mi></mrow><annotation encoding="application/x-tex">Cmax_R+\alpha C_r+\beta N</annotation></semantics></math>.</li>
+</ol>
+<h3 id="selector-inteligente-xgboost">5.5 Selector inteligente
+(XGBoost)</h3>
+<p>Para cada escenario se extraen <strong>14 features</strong> del
+estado del taller en t* (avance, cargas, holguras, tamaño y flexibilidad
+del rush, saturación; lista completa en
+<code>src/xgboost_selector.py</code>). El dataset de entrenamiento se
+genera sintéticamente: <strong>150 escenarios</strong> con rush order
+aleatorio en cada iteración (3–5 operaciones, 1–3 máquinas factibles,
+tiempos U[30,105]), t* variable en [0.3, 0.7]·Cmax₀ y tres schedules
+iniciales distintos (variación de la carga del taller). Cada escenario
+se resuelve con las 5 estrategias y se etiqueta con la ganadora según Z.
+Distribución de etiquetas resultante: insert_end 16, right_shift 2,
+partial_ga 10, priority_ga 11, stability_ga 111.</p>
+<h3 id="diseño-experimental">5.6 Diseño experimental</h3>
+<p>Cuatro escenarios obligatorios con semilla fija (reproducibles con
+<code>python src/run_experiments.py</code>): (1) scheduling inicial; (2)
+rush sin recuperación inteligente; (3) recuperación por GA parcial; (4)
+recuperación con selector XGBoost. Métricas: Cmax,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mi>r</mi></msub><annotation encoding="application/x-tex">C_r</annotation></semantics></math>,
+tiempo computacional, N, operaciones modificadas y % de recuperación
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>=</mo><mfrac><mrow><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mrow><mi>p</mi><mi>e</mi><mi>r</mi><mi>t</mi></mrow></msub><mo>−</mo><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mrow><mi>r</mi><mi>e</mi><mi>c</mi></mrow></msub></mrow><mrow><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mrow><mi>p</mi><mi>e</mi><mi>r</mi><mi>t</mi></mrow></msub><mo>−</mo><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mn>0</mn></msub></mrow></mfrac><mo>×</mo><mn>100</mn></mrow><annotation encoding="application/x-tex">=\frac{Cmax_{pert}-Cmax_{rec}}{Cmax_{pert}-Cmax_0}\times 100</annotation></semantics></math>.</p>
+<h2 id="resultados">6. Resultados</h2>
+<h3 id="scheduling-inicial">6.1 Scheduling inicial</h3>
+<p>El GA obtiene <strong>Cmax₀ = 382 s</strong> en 4.9 s (Gantt en
+<code>results/gantt_inicial.png</code>). Referencias del paper base
+(Tabla 7, 5 corridas): RLEGA 397/400/404 (mín/prom/máx), GA 411/420/433,
+TS 435/453.6/466.</p>
+<h3 id="perturbación-y-recuperación">6.2 Perturbación y
+recuperación</h3>
+<p>Con t* = 191 s, el estado del taller es: 18 operaciones terminadas, 7
+en proceso, 15 pendientes; Q = 15 + 5 = 20 operaciones. La cadena mínima
+del rush J9 suma 321 s, de modo que <strong>ninguna solución puede
+terminar el rush antes de 191 + 321 = 512 s</strong> (cota
+inferior).</p>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+</colgroup>
+<thead>
+<tr>
+<th>Escenario</th>
+<th>Estrategia</th>
+<th>Cmax (s)</th>
+<th>Cr (s)</th>
+<th>N</th>
+<th>Ops. modif.</th>
+<th>Tiempo (s)</th>
+<th>% Recup.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Inicial</td>
+<td>GA</td>
+<td>382</td>
+<td>–</td>
+<td>–</td>
+<td>–</td>
+<td>4.9</td>
+<td>–</td>
+</tr>
+<tr>
+<td>2. Rush sin recuperación</td>
+<td>insert_end</td>
+<td>518</td>
+<td>518</td>
+<td>0</td>
+<td>0</td>
+<td>&lt;0.1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>3. Recuperación GA parcial</td>
+<td>partial_ga</td>
+<td><strong>512</strong></td>
+<td><strong>512</strong></td>
+<td>747</td>
+<td>12</td>
+<td>0.8</td>
+<td>4.4</td>
+</tr>
+<tr>
+<td>4. Recuperación inteligente</td>
+<td>XGBoost → stability_ga</td>
+<td>518</td>
+<td>518</td>
+<td><strong>0</strong></td>
+<td><strong>0</strong></td>
+<td>1.1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>(comp.)</td>
+<td>right_shift</td>
+<td>518</td>
+<td>518</td>
+<td>0</td>
+<td>0</td>
+<td>&lt;0.1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>(comp.)</td>
+<td>priority_ga</td>
+<td>512</td>
+<td>512</td>
+<td>693</td>
+<td>13</td>
+<td>0.9</td>
+<td>4.4</td>
+</tr>
+</tbody>
+</table>
+<p>Daño de la perturbación: 518 − 382 = <strong>136 s</strong> de
+makespan. El GA parcial alcanza <strong>512 s, el óptimo
+demostrable</strong> (coincide con la cota inferior), recuperando 6 s
+(4.4% del daño). Gantts en <code>results/gantt_perturbado.png</code>,
+<code>results/gantt_recuperado.png</code> y
+<code>results/gantt_recuperado_xgboost.png</code>.</p>
+<h3 id="decisión-del-selector">6.3 Decisión del selector</h3>
+<p>Evaluando Z = Cmax_R + 0.5·C_r + 0.1·N: insert_end/stability_ga
+obtienen Z = 777, partial_ga Z = 842.7 y priority_ga Z = 837.3. La
+estrategia elegida por XGBoost (<strong>stability_ga</strong>) es
+efectivamente la de menor Z: ganar 6 s de makespan costaría modificar 12
+de las 15 operaciones pendientes, con 7 cambios de máquina (N = 747), y
+el modelo aprendió que ese trade-off no conviene. Las features más
+importantes del selector son el número de operaciones terminadas (0.17),
+la carga media de máquinas (0.12) y las operaciones en proceso (0.11) —
+es decir, <em>cuánto del programa ya está comprometido</em>.</p>
+<h3 id="comparación-con-el-paper-base">6.4 Comparación con el paper
+base</h3>
+<ul>
+<li><strong>Inicial:</strong> nuestro GA (382) mejora el mejor RLEGA
+reportado (397). No se afirma réplica: el decodificador con inserción en
+huecos construye schedules activos (el paper no detalla el suyo), y
+difieren parámetros, número de corridas, semillas y entorno
+computacional.</li>
+<li><strong>Rescheduling:</strong> el paper reporta 397 → 521 al
+insertar una nueva orden en t = 200 s; nuestro resultado 382 → 518 (sin
+recuperación) y → 512 (GA parcial) es consistente en magnitud, con la
+misma estructura de evento (t* ≈ 200 s, nueva orden = octavo
+modelo).</li>
+<li><strong>Tiempos computacionales:</strong> el paper no reporta
+tiempos del caso de estudio; los nuestros (≈1 s por rescheduling) son
+compatibles con decisión en línea.</li>
+</ul>
+<h2 id="discusión">7. Discusión</h2>
+<ul>
+<li><strong>Calidad de solución.</strong> El GA con decodificación por
+huecos es competitivo (382 vs 397 del RLEGA) y el rescheduling parcial
+alcanza el óptimo del subproblema (cota inferior 512), por lo que la
+calidad de recuperación no es mejorable con ningún otro método.</li>
+<li><strong>Impacto del rush order.</strong> El daño (136 s) está
+dominado por la cadena crítica del propio rush (321 s lanzada en t* =
+191): el margen de recuperación vía re-secuenciamiento es
+estructuralmente pequeño en este escenario (máx. 6 s). Esto no es una
+debilidad del método sino una propiedad de la instancia: con rush orders
+más cortos o flexibles (como los del set de entrenamiento) las
+estrategias difieren mucho más.</li>
+<li><strong>Trade-off makespan–estabilidad.</strong> El resultado
+central: recuperar 4.4% del makespan cuesta modificar 12 de las 15
+operaciones pendientes, incluidos 7 cambios de máquina. Bajo la función
+Z, la mejor decisión es mantener el programa estable — exactamente lo
+que recomienda el selector XGBoost, en línea con el argumento de
+match-up de Moratori et al. (2010): no siempre conviene reoptimizar
+todo.</li>
+<li><strong>Rol del modelo inteligente.</strong> stability_ga ganó en
+111/150 escenarios de entrenamiento, pero en 39 ganaron otras
+estrategias: el selector no es una regla trivial, y sus features más
+importantes (avance del programa y carga del taller) son las que un
+planificador experto también consultaría.</li>
+<li><strong>Limitaciones.</strong> Una sola instancia base (8×8×5);
+pesos α, β, γ fijados por juicio; nervousness medida solo sobre
+operaciones pendientes; detección del evento modelada como regla del DT
+lógico (no hay planta física); GA sin garantía de optimalidad fuera de
+este subproblema (aquí verificable por la cota).</li>
+</ul>
+<h2 id="conclusiones">8. Conclusiones</h2>
+<p>Se implementó una metodología completa de scheduling dinámico para un
+FJSSP en contexto Digital Twin: scheduling inicial por GA (Cmax₀ = 382
+s, mejor que el RLEGA reportado), simulación del rush order en t* =
+Cmax₀/2 con congelamiento de operaciones terminadas/en proceso, cinco
+estrategias de recuperación y un selector XGBoost entrenado con 150
+escenarios sintéticos de rush aleatorio. El GA parcial alcanza el
+makespan recuperado óptimo (512 s) y el selector inteligente identifica
+correctamente la estrategia de menor impacto global (Z), privilegiando
+la estabilidad del programa cuando la ganancia de makespan es marginal.
+<strong>El objetivo del trabajo se cumple</strong>: el sistema detecta
+la perturbación, la absorbe sin interrumpir operaciones en curso y
+decide la recuperación con criterio cuantitativo.</p>
+<p><em>Trabajo futuro:</em> instancias múltiples y de mayor escala,
+calibración de α/β con el decisor, otras perturbaciones (falla de
+máquina, la segunda del paper base), selector entrenado sobre variantes
+parametrizadas continuas de estrategia, y conexión a un DT físico.</p>
+<h2 id="referencias">9. Referencias</h2>
+<ul>
+<li>Liu, Z., Wang, Y., Liang, X., &amp; Ma, Y. (2022). Digital
+twin-driven adaptive scheduling for flexible job shops.
+<em>Sustainability, 14</em>(9), 5340.
+https://doi.org/10.3390/su14095340</li>
+<li>Wang, J., Liu, Y., Ren, S., Wang, C., &amp; Wang, W. (2022). A
+method for dynamic insertion order scheduling in flexible job shops
+based on digital twins. <em>Applied Sciences, 12</em>(23), 12430.</li>
+<li>Moratori, P., Petrovic, S., &amp; Vázquez-Rodríguez, J. A. (2010).
+Integrating rush orders into existent schedules for a complex job shop
+problem. <em>Applied Intelligence, 32</em>, 205–215.
+https://doi.org/10.1007/s10489-010-0215-6</li>
+</ul>
+<h2 id="anexos">10. Anexos</h2>
+<h3 id="a.-supuestos-adoptados">A. Supuestos adoptados</h3>
+<ol type="1">
+<li><strong>Pesos de la función Z:</strong> α = 0.5, β = 0.1, γ₁ = 1, γ₂
+= 10 (un cambio de máquina ≈ 10 unidades de tiempo de perturbación).
+Fijados por juicio; el análisis de 6.3 muestra la decisión que
+inducen.</li>
+<li><strong>Rush order canónico:</strong> reedición del modelo 8, igual
+que el evento dinámico del paper base. Para el entrenamiento del
+selector, el rush es <strong>aleatorio en cada iteración</strong> (3–5
+ops, 1–3 máquinas por op, tiempos U[30,105] — rango empírico de la Tabla
+6).</li>
+<li><strong>Due date del rush:</strong> no se define en el enunciado ni
+en el paper; se reporta C_r en su lugar y se omite la tardanza.</li>
+<li><strong>t* de entrenamiento:</strong> U(0.3, 0.7)·Cmax₀ para que el
+selector generalice alrededor del caso canónico t* = 0.5·Cmax₀.</li>
+<li><strong>Informe PDF:</strong> generado con pandoc (HTML + MathML) e
+impresión headless de Edge, sin LaTeX.</li>
+</ol>
+<h3 id="b.-datos-y-parámetros">B. Datos y parámetros</h3>
+<ul>
+<li>Datos del caso: <code>data/datos_base_extraidos.csv</code> (Tablas
+5–6 del paper); rush: <code>data/datos_rush_order.csv</code>.</li>
+<li>GA inicial: población 120, 300 generaciones, torneo k=3, p_mut =
+0.15, elitismo 1. GA de rescheduling (experimentos): población 80, 150
+generaciones. GA de entrenamiento del selector: población 30, 40
+generaciones (presupuesto reducido; 150 escenarios × 5 estrategias en
+≈43 s).</li>
+<li>XGBoost: 200 árboles, profundidad 4, lr 0.1.</li>
+</ul>
+<h3 id="c.-resultados-y-código">C. Resultados y código</h3>
+<ul>
+<li>Tabla completa: <code>results/tabla_resultados.csv</code>;
+importancia de features:
+<code>results/importancia_features.csv</code>.</li>
+<li>Código fuente en <code>src/</code> (cada módulo incluye un
+autochequeo ejecutable de factibilidad: precedencias, no solapamiento,
+congelamiento y respeto de t*).</li>
+</ul>
+</body>
+</html>
