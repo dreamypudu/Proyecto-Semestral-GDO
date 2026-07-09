@@ -80,6 +80,26 @@ def _greedy_rush(state, sched, busy, ready, gapfill):
     return sched
 
 
+def _right_shift(state):
+    """Insercion con desplazamiento genuino: el rush se programa lo antes posible
+    (compitiendo solo con lo congelado) y las pendientes conservan maquina y orden,
+    desplazadas a la derecha solo lo necesario (nunca antes de su inicio original)."""
+    s0 = state["s0"]
+    busy = {m: sorted(iv) for m, iv in state["mach_busy"].items()}
+    ready = dict(state["job_ready"])
+    sched = _greedy_rush(state, {}, busy, ready, gapfill=True)
+    mach_last = {m: 0.0 for m in busy}
+    for op in sorted(state["P"], key=lambda o: s0[o][1]):
+        m, s_old, e_old = s0[op]
+        p = e_old - s_old
+        s = earliest_start(busy[m], max(s_old, ready.get(op[0], 0.0), mach_last[m]), p)
+        insort(busy[m], (s, s + p))
+        sched[op] = (m, s, s + p)
+        ready[op[0]] = s + p
+        mach_last[m] = s + p
+    return sched
+
+
 def _ga_fitness(state, kind):
     if kind == "partial_ga":
         return None  # solo CmaxR
@@ -95,21 +115,18 @@ def _ga_fitness(state, kind):
     return fit
 
 
-def apply_strategy(name, state, seed=0, pop=40, gens=60):
-    """Ejecuta una estrategia y devuelve el schedule completo (congelado + reprogramado)."""
-    if name == "insert_end":
-        # baseline sin recuperacion: S0 intacto, rush al final de cada maquina
-        sched, busy, ready = _keep_pending(state)
-        sched = _greedy_rush(state, sched, busy, ready, gapfill=False)
-    elif name == "right_shift":
-        # insercion simple: S0 intacto, rush en el primer hueco factible de cada maquina
-        sched, busy, ready = _keep_pending(state)
-        sched = _greedy_rush(state, sched, busy, ready, gapfill=True)
-    elif name in ("partial_ga", "priority_ga", "stability_ga"):
-        sched, _, _ = ga(state["Q"], state["data"], state["job_ready"], state["mach_busy"],
-                         fitness=_ga_fitness(state, name), pop=pop, gens=gens, seed=seed)
-    else:
-        raise ValueError(name)
+def _result_fitness(kind, r):
+    """El objetivo de _ga_fitness evaluado sobre un resultado ya construido."""
+    val = r["cmax_r"]
+    if kind in ("priority_ga", "stability_ga"):
+        val += ALPHA * r["c_r"]
+    if kind == "stability_ga":
+        val += BETA * r["n"]
+    return val
+
+
+def _finish(state, sched):
+    """Completa un schedule parcial con lo congelado y calcula todas las metricas."""
     full = {op: v for op, v in state["s0"].items() if op in state["F"] | state["I"]}
     full.update(sched)
     cmax_r = max(e for _, _, e in full.values())
@@ -120,6 +137,27 @@ def apply_strategy(name, state, seed=0, pop=40, gens=60):
             "ops_modificadas": sum(1 for op in state["P"]
                                    if full[op][0] != state["s0"][op][0]
                                    or abs(full[op][1] - state["s0"][op][1]) > 1e-9)}
+
+
+def apply_strategy(name, state, seed=0, pop=40, gens=60):
+    """Ejecuta una estrategia y devuelve el schedule completo (congelado + reprogramado)."""
+    if name == "insert_end":
+        # baseline sin recuperacion: S0 intacto, rush al final de cada maquina
+        sched, busy, ready = _keep_pending(state)
+        return _finish(state, _greedy_rush(state, sched, busy, ready, gapfill=False))
+    if name == "right_shift":
+        return _finish(state, _right_shift(state))
+    if name in ("partial_ga", "priority_ga", "stability_ga"):
+        sched, _, _ = ga(state["Q"], state["data"], state["job_ready"], state["mach_busy"],
+                         fitness=_ga_fitness(state, name), pop=pop, gens=gens, seed=seed)
+        # warm start elitista: el GA nunca reporta peor que las heuristicas
+        # deterministas segun su propio objetivo (sin esto, un GA mal convergido
+        # deja que una heuristica "gane" escenarios que en realidad empata)
+        candidatos = [_finish(state, sched),
+                      apply_strategy("insert_end", state),
+                      apply_strategy("right_shift", state)]
+        return min(candidatos, key=lambda r: _result_fitness(name, r))
+    raise ValueError(name)
 
 
 if __name__ == "__main__":

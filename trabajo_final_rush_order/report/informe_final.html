@@ -393,8 +393,11 @@ rescheduling</h3>
 <li><strong>insert_end</strong> (baseline sin recuperación): el programa
 pendiente queda intacto; el rush se agrega al final de cada
 máquina.</li>
-<li><strong>right_shift / inserción simple:</strong> programa pendiente
-intacto; el rush se inserta en los primeros huecos factibles.</li>
+<li><strong>right_shift</strong> (inserción con desplazamiento): el rush
+se programa lo antes posible compitiendo solo con lo congelado, y las
+operaciones pendientes conservan su máquina y orden, desplazadas a la
+derecha únicamente lo necesario (nunca antes de su inicio original).
+Prioriza el término del rush a costa de retrasar el resto.</li>
 <li><strong>partial_ga:</strong> GA sobre Q minimizando
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mi>R</mi></msub></mrow><annotation encoding="application/x-tex">Cmax_R</annotation></semantics></math>.</li>
 <li><strong>priority_ga:</strong> GA sobre Q minimizando
@@ -402,32 +405,40 @@ intacto; el rush se inserta en los primeros huecos factibles.</li>
 <li><strong>stability_ga:</strong> GA sobre Q minimizando
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mi>R</mi></msub><mo>+</mo><mi>α</mi><msub><mi>C</mi><mi>r</mi></msub><mo>+</mo><mi>β</mi><mi>N</mi></mrow><annotation encoding="application/x-tex">Cmax_R+\alpha C_r+\beta N</annotation></semantics></math>.</li>
 </ol>
+<p>Las tres variantes con GA usan <strong>warm start elitista</strong>:
+el resultado reportado nunca es peor que las heurísticas deterministas
+evaluadas con el objetivo de la propia variante. Esto garantiza, por
+construcción, que <code>stability_ga</code> domine o iguale a
+<code>insert_end</code>, y evita que el ruido de convergencia del GA
+contamine las etiquetas de entrenamiento del selector.</p>
 <h3 id="selector-inteligente-xgboost">5.5 Selector inteligente
 (XGBoost)</h3>
 <p>Para cada escenario se extraen <strong>14 features</strong> del
 estado del taller en t* (avance, cargas, holguras, tamaño y flexibilidad
-del rush, saturación; lista completa en
-<code>src/xgboost_selector.py</code>). El dataset de entrenamiento se
-genera sintéticamente: <strong>300 escenarios</strong> con rush order
-aleatorio en cada iteración (3–5 operaciones, 1–3 máquinas factibles,
-tiempos U[30,105]), t* variable en [0.3, 0.7]·Cmax₀ y cinco schedules
-iniciales distintos (variación de la carga del taller). Cada escenario
-se resuelve con las 5 estrategias, registrando el costo Z de cada una.
-Distribución de estrategias ganadoras: insert_end 34, right_shift 8,
-partial_ga 18, priority_ga 22, stability_ga 218 (72.7%).</p>
+del rush, saturación, pendientes que compiten por las máquinas del rush;
+lista completa en <code>src/xgboost_selector.py</code>). El dataset de
+entrenamiento se genera sintéticamente: <strong>300 escenarios</strong>
+con rush order aleatorio en cada iteración (3–5 operaciones, 1–3
+máquinas factibles, tiempos U[30,105]), t* variable en [0.3, 0.7]·Cmax₀
+y cinco schedules iniciales distintos (variación de la carga del
+taller). Cada escenario se resuelve con las 5 estrategias registrando
+los componentes (Cmax_R, C_r, N) de cada una; las estrategias con GA se
+etiquetan con la <strong>mediana de 3 corridas</strong> (semillas
+distintas), porque una corrida única con presupuesto reducido tiene un
+ruido mayor que el margen típico entre estrategias. Distribución de
+estrategias ganadoras: insert_end 33, right_shift 44, partial_ga 9,
+priority_ga 10, stability_ga 204 (68%).</p>
 <p>El desbalance de clases motivó la elección de la arquitectura. Se
-compararon tres formulaciones sobre el mismo split estratificado 70/30:
-(i) <strong>clasificador</strong> XGBoost de la estrategia ganadora con
-pesos balanceados por clase, (ii) el mismo clasificador sin balancear, y
-(iii) <strong>regresor de costo</strong> XGBoost que predice Z para cada
-par (estado, estrategia) y selecciona el argmin. Las dos variantes de
-clasificación deciden <em>peor</em> que el baseline trivial “elegir
-siempre stability_ga” (el balanceo agrava el problema, porque fuerza
-desviaciones hacia clases minoritarias que cuestan más de lo que
-aportan). Se adoptó la <strong>regresión de costo</strong>, que optimiza
-directamente la calidad de decisión en vez del accuracy de clasificación
-(validación en 6.3). <code>partial_ga</code> se mantiene en el
-repertorio: gana 18/300 escenarios, no es una clase muerta.</p>
+compararon dos formulaciones bajo la misma validación: (i)
+<strong>clasificador</strong> XGBoost de la estrategia ganadora con
+pesos balanceados por clase, y (ii) <strong>regresor de costo</strong>
+XGBoost que predice Z para cada par (estado, estrategia) y selecciona el
+argmin. El clasificador decide <em>peor</em> que el baseline trivial
+“elegir siempre stability_ga” (el balanceo fuerza desviaciones hacia
+clases minoritarias que cuestan más de lo que aportan). Se adoptó la
+<strong>regresión de costo</strong>, que optimiza directamente la
+calidad de decisión en vez del accuracy de clasificación (validación en
+6.3).</p>
 <h3 id="diseño-experimental">5.6 Diseño experimental</h3>
 <p>Cuatro escenarios obligatorios con semilla fija (reproducibles con
 <code>python src/run_experiments.py</code>): (1) scheduling inicial; (2)
@@ -480,7 +491,7 @@ inferior).</p>
 <td>–</td>
 <td>–</td>
 <td>–</td>
-<td>4.9</td>
+<td>3.3</td>
 <td>–</td>
 </tr>
 <tr>
@@ -500,7 +511,7 @@ inferior).</p>
 <td><strong>512</strong></td>
 <td>747</td>
 <td>12</td>
-<td>0.8</td>
+<td>0.6</td>
 <td>4.4</td>
 </tr>
 <tr>
@@ -510,18 +521,18 @@ inferior).</p>
 <td>518</td>
 <td><strong>0</strong></td>
 <td><strong>0</strong></td>
-<td>1.1</td>
+<td>0.7</td>
 <td>0</td>
 </tr>
 <tr>
 <td>(comp.)</td>
 <td>right_shift</td>
-<td>518</td>
-<td>518</td>
-<td>0</td>
-<td>0</td>
+<td>583</td>
+<td><strong>512</strong></td>
+<td>541</td>
+<td>4</td>
 <td>&lt;0.1</td>
-<td>0</td>
+<td><strong>−47.8</strong></td>
 </tr>
 <tr>
 <td>(comp.)</td>
@@ -530,7 +541,7 @@ inferior).</p>
 <td>512</td>
 <td>693</td>
 <td>13</td>
-<td>0.9</td>
+<td>0.7</td>
 <td>4.4</td>
 </tr>
 </tbody>
@@ -538,7 +549,12 @@ inferior).</p>
 <p>Daño de la perturbación: 518 − 382 = <strong>136 s</strong> de
 makespan. El GA parcial alcanza <strong>512 s, el óptimo
 demostrable</strong> (coincide con la cota inferior), recuperando 6 s
-(4.4% del daño). Gantts en <code>results/gantt_perturbado.png</code>,
+(4.4% del daño). Nótese <code>right_shift</code>: logra el término
+óptimo del rush (Cr = 512, la cota inferior) pero a costa de empujar el
+resto del programa hasta Cmax = 583 — un <strong>% de recuperación
+negativo</strong>, que ilustra que priorizar ciegamente al pedido
+urgente puede dañar más de lo que el propio rush dañó. Gantts en
+<code>results/gantt_perturbado.png</code>,
 <code>results/gantt_recuperado.png</code> y
 <code>results/gantt_recuperado_xgboost.png</code>.</p>
 <h3 id="decisión-y-validación-del-selector">6.3 Decisión y validación
@@ -550,58 +566,147 @@ XGBoost (<strong>stability_ga</strong>) es efectivamente la de menor Z:
 ganar 6 s de makespan costaría modificar 12 de las 15 operaciones
 pendientes, con 7 cambios de máquina (N = 747), y el modelo aprendió que
 ese trade-off no conviene.</p>
-<p><strong>Validación contra baselines</strong> (split estratificado
-70/30; test n = 90; <code>results/evaluacion_selector.csv</code>):</p>
+<p><strong>Validación contra baselines.</strong> Para evitar fuga de
+información, la validación es <strong>leave-one-group-out por schedule
+base</strong>: los escenarios del programa inicial que se evalúa nunca
+se vieron en entrenamiento, y cada uno de los 300 escenarios recibe una
+predicción <em>out-of-fold</em>
+(<code>results/evaluacion_selector.csv</code>):</p>
 <table>
 <thead>
 <tr>
 <th>Política</th>
-<th>Z medio (test)</th>
-<th>Accuracy</th>
+<th>Z medio</th>
+<th>Regret medio vs oráculo</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Oráculo (mejor estrategia por escenario)</td>
-<td>737.9</td>
-<td>–</td>
-</tr>
-<tr>
-<td><strong>Selector (regresión de Z)</strong></td>
-<td><strong>740.1</strong></td>
-<td>0.74</td>
+<td>740.2</td>
+<td>0</td>
 </tr>
 <tr>
 <td>Baseline trivial: siempre stability_ga</td>
-<td>740.1</td>
-<td>0.73</td>
+<td>740.8</td>
+<td><strong>0.66</strong></td>
+</tr>
+<tr>
+<td><strong>Selector (regresión de Z)</strong></td>
+<td>741.4</td>
+<td><strong>1.18</strong></td>
 </tr>
 <tr>
 <td>Clasificador XGBoost balanceado (descartado)</td>
-<td>751.4</td>
-<td>0.63</td>
+<td>749.6</td>
+<td>9.43</td>
 </tr>
 </tbody>
 </table>
-<p>El selector <strong>iguala al baseline trivial y supera claramente a
-los clasificadores</strong>. No lo supera porque el margen total
-disponible es de solo 2.2 puntos de Z (740.1 vs 737.9 del oráculo, un
-0.3%): en esta distribución de escenarios la política estable es casi
-inmejorable, y esa diferencia residual es del orden del ruido del GA que
-genera las etiquetas. El valor del selector no está en este margen sino
-en que <em>aprende</em> la política correcta en vez de asumirla — se
-desvía de stability solo cuando predice ventaja (2 veces en el test) — y
-en que la misma arquitectura re-entrena sin cambios si el taller, los
-pesos α/β o la distribución de rush orders cambian y la política estable
-deja de ser dominante. En cuanto al recall por clase (stability 1.0,
-insert_end 0.1, resto 0.0), confirma que con margen tan estrecho el
-modelo aprende a no desviarse; no es un defecto de clasificación sino la
-decisión de menor riesgo.</p>
+<p>Lectura honesta: bajo validación estricta, el selector queda
+<strong>levemente por debajo del baseline trivial</strong> (+0.5 puntos
+de Z en promedio, consistente en los 5 folds) y <strong>8 veces mejor
+que el clasificador</strong>. La causa es estructural: el margen total
+que separa al baseline del oráculo es 0.66 puntos de Z (~0.1%) — en esta
+distribución de escenarios y con estos pesos, la política estable es
+prácticamente inmejorable y no hay señal suficiente para que ningún
+selector la supere.</p>
+<p><strong>¿Para qué sirve entonces el selector? El análisis de
+sensibilidad responde</strong>
+(<code>results/sensibilidad_pesos.csv</code>): recalculando las
+estrategias ganadoras con los mismos 300 escenarios bajo otros
+pesos:</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+</colgroup>
+<thead>
+<tr>
+<th>α</th>
+<th>β</th>
+<th>insert_end</th>
+<th>right_shift</th>
+<th>partial_ga</th>
+<th>priority_ga</th>
+<th>stability_ga</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.5</td>
+<td><strong>0.1</strong> (usado)</td>
+<td>33</td>
+<td>44</td>
+<td>9</td>
+<td>10</td>
+<td><strong>204</strong></td>
+</tr>
+<tr>
+<td>0.5</td>
+<td><strong>0.0</strong></td>
+<td>24</td>
+<td>79</td>
+<td><strong>97</strong></td>
+<td>75</td>
+<td>25</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>0.05</td>
+<td>28</td>
+<td>46</td>
+<td>18</td>
+<td>23</td>
+<td>185</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>0.2</td>
+<td>51</td>
+<td>46</td>
+<td>3</td>
+<td>5</td>
+<td>195</td>
+</tr>
+<tr>
+<td>0.0</td>
+<td>0.1</td>
+<td>49</td>
+<td>40</td>
+<td>17</td>
+<td>11</td>
+<td>183</td>
+</tr>
+<tr>
+<td>1.0</td>
+<td>0.1</td>
+<td>29</td>
+<td>46</td>
+<td>12</td>
+<td>22</td>
+<td>191</td>
+</tr>
+</tbody>
+</table>
+<p>Si la estabilidad no importara (β=0), la política “siempre stability”
+ganaría solo 25/300 escenarios y sería un pésimo baseline; la dominancia
+de la estrategia estable <strong>es una consecuencia del peso β, no una
+ley del taller</strong>. La regla fija “elegir siempre stability” solo
+es buena mientras β sea alto; el selector, en cambio, se re-entrena con
+las nuevas etiquetas sin cambiar una línea de código. Ese es su valor:
+robustez ante cambios de política de la empresa, no ganar décimas de Z
+en la configuración actual.</p>
 <p>La feature más importante del regresor es el <strong>tiempo total
-mínimo del rush</strong> (0.45), seguida de su tiempo promedio (0.07) y
-los indicadores de estrategia — coherente con el análisis: el costo Z
-está gobernado por la cadena crítica del propio rush, que fija la cota
-inferior de C_r.</p>
+mínimo del rush</strong> (0.42), seguida de la carga media de máquinas
+(0.10) — coherente con el análisis: el costo Z está gobernado por la
+cadena crítica del propio rush, que fija la cota inferior de C_r. Con
+las features corregidas, las 14 aportan importancia no nula.</p>
 <h3 id="comparación-con-el-paper-base">6.4 Comparación con el paper
 base</h3>
 <ul>
@@ -640,21 +745,26 @@ que recomienda el selector XGBoost, en línea con el argumento de
 match-up de Moratori et al. (2010): no siempre conviene reoptimizar
 todo.</li>
 <li><strong>Rol del modelo inteligente.</strong> stability_ga ganó en
-218/300 escenarios de entrenamiento, pero en 82 ganaron otras
-estrategias: el repertorio no es redundante. La validación (6.3) muestra
-que un clasificador de la clase ganadora — balanceado o no — decide peor
-que el baseline trivial, mientras que la regresión de costo lo iguala;
-la lección metodológica es que en selección de estrategias importa la
-<em>calidad de la decisión</em> (Z), no el accuracy, y que un baseline
-fuerte debe reportarse siempre.</li>
+204/300 escenarios de entrenamiento, pero en 96 ganaron otras
+estrategias: el repertorio no es redundante. La validación sin fuga
+(6.3) muestra que un clasificador de la clase ganadora decide claramente
+peor que el baseline trivial, y que la regresión de costo queda a 0.5
+puntos de Z de él — la lección metodológica es que en selección de
+estrategias importa la <em>calidad de la decisión</em> (regret), no el
+accuracy, y que un baseline fuerte y un oráculo deben reportarse
+siempre. El análisis de sensibilidad demuestra que la dominancia de la
+política estable depende enteramente del peso β: el aporte del selector
+es adaptabilidad ante cambios de esa política, no décimas de Z en la
+configuración vigente.</li>
 <li><strong>Limitaciones.</strong> Una sola instancia base (8×8×5);
-pesos α, β, γ fijados por juicio; margen baseline–oráculo pequeño (2.2
-en Z) y del orden del ruido de etiquetado del GA, por lo que superar al
-baseline trivial no es estadísticamente alcanzable en esta distribución
-de escenarios; nervousness medida solo sobre operaciones pendientes;
-detección del evento modelada como regla del DT lógico (no hay planta
-física); GA sin garantía de optimalidad fuera de este subproblema (aquí
-verificable por la cota).</li>
+pesos α, β, γ fijados por juicio (aunque su efecto está cuantificado en
+la tabla de sensibilidad); margen baseline–oráculo mínimo (0.66 en Z)
+que hace inalcanzable superar al baseline en esta distribución;
+nervousness medida solo sobre operaciones pendientes; detección del
+evento modelada como regla del DT lógico (no hay planta física); GA sin
+garantía de optimalidad fuera de este subproblema (aquí verificable por
+la cota); las etiquetas usan la mediana de 3 corridas de GA, que reduce
+pero no elimina el ruido de etiquetado.</li>
 </ul>
 <h2 id="conclusiones">8. Conclusiones</h2>
 <p>Se implementó una metodología completa de scheduling dinámico para un
@@ -704,6 +814,13 @@ ops, 1–3 máquinas por op, tiempos U[30,105] — rango empírico de la Tabla
 en el paper; se reporta C_r en su lugar y se omite la tardanza.</li>
 <li><strong>t* de entrenamiento:</strong> U(0.3, 0.7)·Cmax₀ para que el
 selector generalice alrededor del caso canónico t* = 0.5·Cmax₀.</li>
+<li><strong>Etiquetado del dataset:</strong> mediana de 3 corridas de GA
+por estrategia (reduce el ruido de etiquetado); estrategias
+deterministas con una corrida. Los GA usan warm start elitista respecto
+de las heurísticas deterministas.</li>
+<li><strong>Validación:</strong> leave-one-group-out por schedule base
+(5 folds), para que ningún escenario de test comparta programa inicial
+con el entrenamiento.</li>
 <li><strong>Informe PDF:</strong> generado con pandoc (HTML + MathML) e
 impresión headless de Edge, sin LaTeX.</li>
 </ol>
@@ -713,20 +830,24 @@ impresión headless de Edge, sin LaTeX.</li>
 5–6 del paper); rush: <code>data/datos_rush_order.csv</code>.</li>
 <li>GA inicial: población 120, 300 generaciones, torneo k=3, p_mut =
 0.15, elitismo 1. GA de rescheduling (experimentos): población 80, 150
-generaciones. GA de entrenamiento del selector: población 30, 40
-generaciones (presupuesto reducido; 300 escenarios × 5 estrategias en
-≈60 s).</li>
+generaciones. GA de etiquetado del selector: población 30, 40
+generaciones × 3 semillas (mediana); 300 escenarios × 5 estrategias en
+≈160 s.</li>
 <li>Selector (regresor de costo): XGBRegressor, 300 árboles, profundidad
 5, lr 0.08; entrada = 14 features + one-hot de estrategia (1500 filas de
 entrenamiento). Clasificador de comparación: XGBClassifier 200/4/0.1 con
 <code>sample_weight</code> balanceado.</li>
+<li>La transcripción de los datos del paper es verificable
+programáticamente contra el PDF con
+<code>python src/verificar_datos.py</code> (81/81 pares
+operación-máquina-tiempo idénticos).</li>
 </ul>
 <h3 id="c.-resultados-y-código">C. Resultados y código</h3>
 <ul>
 <li>Tabla completa: <code>results/tabla_resultados.csv</code>;
 importancia de features: <code>results/importancia_features.csv</code>;
-validación del selector:
-<code>results/evaluacion_selector.csv</code>.</li>
+validación del selector: <code>results/evaluacion_selector.csv</code>;
+sensibilidad de pesos: <code>results/sensibilidad_pesos.csv</code>.</li>
 <li>Código fuente en <code>src/</code> (cada módulo incluye un
 autochequeo ejecutable de factibilidad: precedencias, no solapamiento,
 congelamiento y respeto de t*).</li>

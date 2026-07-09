@@ -85,31 +85,50 @@ def main():
     # 4. Recuperacion con selector XGBoost
     print("[4] Entrenando selector XGBoost (escenarios sinteticos, rush aleatorio)...")
     t0 = time.time()
-    X, y, Z = build_dataset(n_escenarios=300, seed=SEED)
-    ev = evaluate(X, y, Z, seed=SEED)  # validacion en split estratificado 70/30
-    model = train(X, Z, seed=SEED)     # modelo final: todos los datos
+    X, y, Z, comp, groups = build_dataset(n_escenarios=300, seed=SEED)
+    ev = evaluate(X, y, Z, groups, seed=SEED)  # LOGO CV por schedule base (sin fuga)
+    model = train(X, Z, seed=SEED)             # modelo final: todos los datos
     t_train = time.time() - t0
-    print(f"    dataset={len(y)} escenarios, etiquetas={ev['distribucion']}, "
-          f"entrenamiento total {t_train:.0f}s")
-    print(f"    validacion (test n={ev['n_test']}): accuracy={ev['accuracy_global']:.2f}, "
+    print(f"    dataset={ev['n']} escenarios, etiquetas={ev['distribucion']}, "
+          f"generacion+entrenamiento {t_train:.0f}s")
+    print(f"    validacion LOGO ({ev['folds']} folds): accuracy={ev['accuracy_global']:.2f}, "
           f"recall por clase={ev['recall_por_clase']}")
-    print(f"    Z medio test: selector={ev['z_selector']:.1f} | "
+    print(f"    Z medio (out-of-fold): selector={ev['z_selector']:.1f} | "
           f"clf balanceado={ev['z_clf_balanceado']:.1f} | "
           f"baseline siempre-stability={ev['z_baseline_stability']:.1f} | "
           f"oraculo={ev['z_oraculo']:.1f}")
+    print(f"    regret medio vs oraculo: selector={ev['regret_selector']:.2f} | "
+          f"clf={ev['regret_clf_balanceado']:.2f} | baseline={ev['regret_baseline']:.2f}")
+    print(f"    dif selector-baseline por fold: {ev['dif_selector_vs_baseline_por_fold']}")
     with open(f"{BASE}/results/evaluacion_selector.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["metrica", "valor"])
-        w.writerow(["escenarios", len(y)])
+        w.writerow(["escenarios", ev["n"]])
+        w.writerow(["validacion", f"leave-one-group-out, {ev['folds']} schedules base"])
         w.writerow(["distribucion_etiquetas", " ".join(map(str, ev["distribucion"]))])
-        w.writerow(["accuracy_global_test", f"{ev['accuracy_global']:.3f}"])
+        w.writerow(["accuracy_global_oof", f"{ev['accuracy_global']:.3f}"])
         for k, v in ev["recall_por_clase"].items():
             w.writerow([f"recall_{k}", f"{v:.3f}"])
-        w.writerow(["desvios_de_stability_test", ev["desvios_de_stability"]])
+        w.writerow(["desvios_de_stability", ev["desvios_de_stability"]])
         w.writerow(["z_medio_selector_regresion", f"{ev['z_selector']:.2f}"])
         w.writerow(["z_medio_clf_balanceado", f"{ev['z_clf_balanceado']:.2f}"])
         w.writerow(["z_medio_baseline_stability", f"{ev['z_baseline_stability']:.2f}"])
         w.writerow(["z_medio_oraculo", f"{ev['z_oraculo']:.2f}"])
+        w.writerow(["regret_selector", f"{ev['regret_selector']:.2f}"])
+        w.writerow(["regret_clf_balanceado", f"{ev['regret_clf_balanceado']:.2f}"])
+        w.writerow(["regret_baseline", f"{ev['regret_baseline']:.2f}"])
+        for g, d in ev["dif_selector_vs_baseline_por_fold"].items():
+            w.writerow([f"dif_selector_baseline_fold_{g}", d])
+
+    # sensibilidad de los pesos de Z: con los mismos componentes (CmaxR, Cr, N)
+    # se recalcula que estrategia ganaria bajo otros (alpha, beta)
+    with open(f"{BASE}/results/sensibilidad_pesos.csv", "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["alpha", "beta"] + STRATEGIES)
+        for a, b in ((0.5, 0.1), (0.5, 0.0), (0.5, 0.05), (0.5, 0.2), (0.0, 0.1), (1.0, 0.1)):
+            zab = comp[:, :, 0] + a * comp[:, :, 1] + b * comp[:, :, 2]
+            w.writerow([a, b] + np.bincount(zab.argmin(axis=1),
+                                            minlength=len(STRATEGIES)).tolist())
     t0 = time.time()
     elegida = select(model, st)
     smart = apply_strategy(elegida, st, seed=SEED, **GA_FINAL)

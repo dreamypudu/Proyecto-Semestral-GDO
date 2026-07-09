@@ -29,8 +29,9 @@ Taller de manufactura de autos personalizados representado por un Digital Twin. 
 
 - 5 estrategias: insert_end, right_shift, GA parcial, GA prioridad-rush, GA estabilidad.
 - **XGBoost como selector**: regresor que predice el costo Z = CmaxR + 0.5·Cr + 0.1·N de cada estrategia dado el estado del taller (14 features) y elige la de menor Z predicho.
-- Entrenamiento: 300 escenarios sintéticos con **rush aleatorio en cada iteración**, t\* variable y 5 programas iniciales. Distribución de ganadoras: stability 218, insert_end 34, priority 22, partial 18, right_shift 8 — fuerte desbalance a favor de la estabilidad.
-- **Validación honesta** (test 70/30): un clasificador de la clase ganadora (balanceado o no) decide *peor* que el baseline trivial "siempre stability"; la regresión de costo lo iguala (Z 740.1 vs 740.1; oráculo 737.9). El margen total disponible es ~2 puntos de Z: en este taller, la política estable es casi inmejorable — y el sistema lo *aprende* en vez de asumirlo.
+- Entrenamiento: 300 escenarios sintéticos con **rush aleatorio en cada iteración**, t\* variable y 5 programas iniciales; etiquetas por mediana de 3 corridas de GA (menos ruido). Distribución de ganadoras: stability 204, right_shift 44, insert_end 33, priority 10, partial 9.
+- **Validación honesta** (leave-one-group-out, sin fuga): regret medio vs oráculo — baseline "siempre stability" 0.66, selector 1.18, clasificador balanceado 9.43. El selector no supera al baseline porque el margen total es 0.66 puntos de Z: con estos pesos, la política estable es casi inmejorable — y el sistema lo *aprende* en vez de asumirlo.
+- **Sensibilidad**: si β (peso de estabilidad) fuera 0, "siempre stability" ganaría solo 25/300 y dominarían los GA. La regla fija sirve solo mientras la política no cambie; el selector se re-entrena solo. Ese es su valor real.
 
 ## 6. Resultados y Gantt — 4 min
 
@@ -39,7 +40,10 @@ Taller de manufactura de autos personalizados representado por un Digital Twin. 
 | Inicial | 382 | – | – | – |
 | Rush sin recuperación | 518 | 518 | 0 | 0 |
 | GA parcial | **512 (óptimo)** | 512 | 747 | 4.4% |
+| right_shift (prioriza el rush) | 583 | **512** | 541 | **−47.8%** |
 | XGBoost → stability_ga | 518 | 518 | **0** | 0 |
+
+- Dato para la discusión: right_shift termina el rush en el óptimo (512) pero empuja el makespan a 583 — recuperación *negativa*: priorizar ciegamente al pedido urgente daña más que el propio pedido.
 
 - GA parcial **alcanza la cota inferior**: recuperación óptima en makespan.
 - Pero cuesta modificar 12 de las 15 operaciones pendientes (7 cambios de máquina) → según Z, **conviene no tocar el programa**: eso eligió el selector (Z = 777 vs 843 del GA parcial).

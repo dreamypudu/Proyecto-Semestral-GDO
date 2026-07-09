@@ -9,7 +9,7 @@
 7. **Metodología** — GA con cromosoma MS+OS, decodificador con inserción en huecos; mismo decodificador para inicial y rescheduling.
 8. **Perturbación** — rush order en t\* = Cmax₀/2 (reedición del modelo 8, como el caso dinámico del paper); pipeline: detectar → clasificar → congelar → reprogramar.
 9. **Estrategias de recuperación** — insert_end (baseline), right_shift, GA parcial, GA prioridad rush, GA estabilidad.
-10. **Selector inteligente** — XGBoost (regresión de costo): predice Z de cada estrategia desde 14 features del taller y elige el argmin; entrenado con 300 escenarios sintéticos (rush aleatorio); validado contra baseline trivial y oráculo.
+10. **Selector inteligente** — XGBoost (regresión de costo): predice Z de cada estrategia desde 14 features del taller y elige el argmin; 300 escenarios sintéticos (rush aleatorio, etiquetas por mediana de 3 corridas); validación leave-one-group-out contra baseline trivial y oráculo + análisis de sensibilidad de pesos.
 11. **Resultados (1)** — Gantt inicial / perturbado / recuperado.
 12. **Resultados (2)** — tabla comparativa: Cmax, Cr, N, tiempo, % recuperación por estrategia.
 13. **Discusión** — trade-off makespan vs estabilidad; comparación con paper base; limitaciones.

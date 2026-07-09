@@ -17,6 +17,7 @@ src/           código fuente
   xgboost_selector.py features del estado del taller + entrenamiento del selector
   gantt.py            diagramas de Gantt
   run_experiments.py  ejecuta los 4 experimentos obligatorios y genera resultados
+  verificar_datos.py  verifica la transcripcion de datos contra el PDF del paper
 results/       Gantt inicial / perturbado / recuperado + tabla de resultados
 report/        informe final (md/pdf), logica_experimento.md (pipeline detallado +
                auditoria de errores potenciales), marco_metodologico.md (teoria y

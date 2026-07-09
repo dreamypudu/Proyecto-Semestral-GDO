@@ -94,7 +94,24 @@ Definidas en `src/metrics.py`:
 
 ## Parte II: Revisión crítica — errores potenciales detectados
 
-Auditoría del propio trabajo, ordenada de mayor a menor impacto. Cada punto indica evidencia y si afecta las conclusiones.
+Auditoría del propio trabajo, ordenada de mayor a menor impacto. Cada punto indica evidencia y si afecta las conclusiones. **Tras la auditoría, los errores corregibles fueron corregidos y el pipeline completo se re-ejecutó**; el estado de cada uno:
+
+| Error | Estado | Corrección aplicada y verificación |
+|---|---|---|
+| E1 ruido de etiquetado | ✅ Corregido | Etiquetas = mediana de 3 corridas de GA por estrategia (`build_dataset`, `n_seeds=3`) |
+| E2 sin warm start | ✅ Corregido | Warm start elitista: el GA nunca reporta peor que las heurísticas deterministas según su propio objetivo (`apply_strategy`); verificado: stability_ga ≡ insert_end en el escenario canónico |
+| E3 fuga en el split | ✅ Corregido | Validación leave-one-group-out por schedule base: test nunca comparte programa inicial con train (`evaluate`) |
+| E4 un split sin CI | ✅ Corregido | Predicciones out-of-fold para los 300 escenarios + diferencia selector-baseline reportada por fold (consistente: +0.0 a +1.3 en los 5 folds) |
+| E5 features duplicadas | ✅ Corregido | `avance_tiempo_pct` = fracción del *tiempo de trabajo* completado; `pendientes_en_maquinas_rush` = pendientes que compiten con el rush. Verificado: las 14 features tienen importancia > 0 |
+| E6 right_shift no desplazaba | ✅ Corregido | Implementación genuina (rush primero, pendientes desplazadas sin retroceder). Verificado: ahora gana 44/300 escenarios y en el caso canónico logra Cr = 512 óptimo con Cmax = 583 |
+| E7 riesgo de typo en tablas | ✅ Verificado sin error | `src/verificar_datos.py` compara DATA contra el PDF: 81/81 pares idénticos |
+| E8 lectura de 382 vs 397 | 📄 Documentado | Inherente a la comparación; declarado en informe §6.4 |
+| E9 escalas mezcladas en Z | ✅ Mitigado | Se reporta además el *regret* por escenario (selector 1.18, baseline 0.66, clasificador 9.43) |
+| E10 modelo desplegado ≠ validado | 📄 Documentado | Práctica estándar; con LOGO cada escenario tiene predicción out-of-fold |
+| E11 pesos sin sensibilidad | ✅ Corregido | `results/sensibilidad_pesos.csv`: con β=0 la política estable gana solo 25/300 (dominarían los GA); con β≥0.05 domina. La dominancia de stability es consecuencia de β, no ley del taller |
+| E12 métricas relativas a insert_end | 📄 Documentado | El caso ahora aparece en los datos: right_shift tiene %recuperación = −47.8% en el escenario canónico |
+
+Los hallazgos originales se conservan a continuación como registro de la auditoría (los números citados corresponden a la versión previa a las correcciones).
 
 ### E1. Ruido de etiquetado: las etiquetas del dataset dependen de la suerte del GA ⚠️ impacto alto en los conteos, no en la conclusión
 
@@ -151,13 +168,23 @@ Como es práctica estándar, las cifras de validación provienen del modelo entr
 
 "Daño" y "% de recuperación" se definen respecto a `insert_end` como programa perturbado de referencia. Si otra estrategia fuera peor que `insert_end` en algún escenario, el % de recuperación podría ser negativo o mayor a 100. En los datos observados no ocurre, pero la métrica hereda esa fragilidad de definición.
 
-### Qué conclusiones sobreviven a esta auditoría
+### Resultados después de las correcciones
 
-Robustas (no dependen de los puntos anteriores):
-- **Cmax recuperado = 512 es óptimo**: coincide con una cota inferior aritmética, independiente de todo GA.
-- **Los clasificadores deciden peor que el baseline trivial** (+6.1 y +11.3 puntos de Z): la diferencia excede con claridad las fluctuaciones observadas y se replicó en corridas independientes.
-- **El margen recuperable sobre la política estable es pequeño** en esta distribución de escenarios (≤ 2.2 en promedio) — de hecho E1 lo refuerza: parte de ese 2.2 es ruido.
+La re-ejecución completa con todos los fixes cambió los números (todos regenerables con `python run_experiments.py`):
 
-A matizar (afectadas por E1–E3):
-- La distribución exacta de victorias `[34, 8, 18, 22, 218]`.
-- El accuracy 0.74 como medida de generalización.
+- **Distribución de etiquetas** (mediana de 3 semillas + warm start + right_shift genuino): `[33, 44, 9, 10, 204]` — right_shift pasó de 8 a 44 victorias (ahora es una estrategia real) y stability bajó de 73% a 68%.
+- **Validación LOGO sin fuga** (out-of-fold, 300 escenarios): regret medio vs oráculo — baseline 0.66, selector 1.18, clasificador balanceado 9.43. Bajo validación estricta el selector queda **levemente por debajo** del baseline trivial (+0.5 Z, consistente en los 5 folds): el "empate" de la validación anterior estaba parcialmente inflado por la fuga (E3). El margen total baseline–oráculo se redujo de 2.2 a 0.66 al limpiar el ruido de etiquetado — confirmando que gran parte del "margen" anterior era ruido (E1).
+- **Sensibilidad de pesos** (E11): con β=0 ganarían los GA (97+75+79 vs 25 de stability); con β≥0.05 domina stability. Esto reencuadra el valor del selector: no es ganar décimas de Z con los pesos vigentes (imposible: 0.66 de margen), sino adaptarse por re-entrenamiento si la política de la empresa (β) cambia.
+- **Escenario canónico**: sin cambios en lo esencial (382 → 518 → 512 óptimo; XGBoost sigue eligiendo stability_ga). Novedad: right_shift ahora exhibe el trade-off opuesto — Cr = 512 (óptimo para el rush) con Cmax = 583 y recuperación **negativa** (−47.8%).
+
+### Qué conclusiones sobreviven
+
+Robustas (independientes de los errores encontrados y de sus correcciones):
+- **Cmax recuperado = 512 es óptimo**: cota inferior aritmética, independiente de todo GA.
+- **El clasificador decide mucho peor que el baseline trivial** (regret 9.43 vs 0.66): la formulación correcta del selector es predicción de costo, no clasificación.
+- **El margen recuperable sobre la política estable es mínimo** con los pesos vigentes — y las correcciones lo *redujeron* (2.2 → 0.66), reforzando la conclusión.
+
+Corregidas por la auditoría (los números finales del informe ya las reflejan):
+- La distribución de victorias y el rol de right_shift.
+- La validación (ahora sin fuga, con regret y con evidencia por fold).
+- La justificación del selector (adaptabilidad ante cambio de pesos, cuantificada).

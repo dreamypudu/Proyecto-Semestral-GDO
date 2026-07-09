@@ -1,14 +1,23 @@
 metrica,valor
 escenarios,300
-distribucion_etiquetas,34 8 18 22 218
-accuracy_global_test,0.744
-recall_insert_end,0.100
-recall_right_shift,0.000
+validacion,"leave-one-group-out, 5 schedules base"
+distribucion_etiquetas,33 44 9 10 204
+accuracy_global_oof,0.660
+recall_insert_end,0.000
+recall_right_shift,0.045
 recall_partial_ga,0.000
 recall_priority_ga,0.000
-recall_stability_ga,1.000
-desvios_de_stability_test,2
-z_medio_selector_regresion,740.09
-z_medio_clf_balanceado,751.41
-z_medio_baseline_stability,740.09
-z_medio_oraculo,737.87
+recall_stability_ga,0.961
+desvios_de_stability,23
+z_medio_selector_regresion,741.37
+z_medio_clf_balanceado,749.62
+z_medio_baseline_stability,740.84
+z_medio_oraculo,740.19
+regret_selector,1.18
+regret_clf_balanceado,9.43
+regret_baseline,0.66
+dif_selector_baseline_fold_0,0.0
+dif_selector_baseline_fold_1,0.358
+dif_selector_baseline_fold_2,0.91
+dif_selector_baseline_fold_3,0.068
+dif_selector_baseline_fold_4,1.294
