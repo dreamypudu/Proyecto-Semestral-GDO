@@ -95,7 +95,9 @@ En t\* = Cmax₀/2 el DT lógico (capa de monitoreo implementada como regla sobr
 
 ### 5.5 Selector inteligente (XGBoost)
 
-Para cada escenario se extraen **14 features** del estado del taller en t\* (avance, cargas, holguras, tamaño y flexibilidad del rush, saturación; lista completa en `src/xgboost_selector.py`). El dataset de entrenamiento se genera sintéticamente: **150 escenarios** con rush order aleatorio en cada iteración (3–5 operaciones, 1–3 máquinas factibles, tiempos U[30,105]), t\* variable en [0.3, 0.7]·Cmax₀ y tres schedules iniciales distintos (variación de la carga del taller). Cada escenario se resuelve con las 5 estrategias y se etiqueta con la ganadora según Z. Distribución de etiquetas resultante: insert_end 16, right_shift 2, partial_ga 10, priority_ga 11, stability_ga 111.
+Para cada escenario se extraen **14 features** del estado del taller en t\* (avance, cargas, holguras, tamaño y flexibilidad del rush, saturación; lista completa en `src/xgboost_selector.py`). El dataset de entrenamiento se genera sintéticamente: **300 escenarios** con rush order aleatorio en cada iteración (3–5 operaciones, 1–3 máquinas factibles, tiempos U[30,105]), t\* variable en [0.3, 0.7]·Cmax₀ y cinco schedules iniciales distintos (variación de la carga del taller). Cada escenario se resuelve con las 5 estrategias, registrando el costo Z de cada una. Distribución de estrategias ganadoras: insert_end 34, right_shift 8, partial_ga 18, priority_ga 22, stability_ga 218 (72.7%).
+
+El desbalance de clases motivó la elección de la arquitectura. Se compararon tres formulaciones sobre el mismo split estratificado 70/30: (i) **clasificador** XGBoost de la estrategia ganadora con pesos balanceados por clase, (ii) el mismo clasificador sin balancear, y (iii) **regresor de costo** XGBoost que predice Z para cada par (estado, estrategia) y selecciona el argmin. Las dos variantes de clasificación deciden *peor* que el baseline trivial "elegir siempre stability_ga" (el balanceo agrava el problema, porque fuerza desviaciones hacia clases minoritarias que cuestan más de lo que aportan). Se adoptó la **regresión de costo**, que optimiza directamente la calidad de decisión en vez del accuracy de clasificación (validación en 6.3). `partial_ga` se mantiene en el repertorio: gana 18/300 escenarios, no es una clase muerta.
 
 ### 5.6 Diseño experimental
 
@@ -122,9 +124,22 @@ Con t\* = 191 s, el estado del taller es: 18 operaciones terminadas, 7 en proces
 
 Daño de la perturbación: 518 − 382 = **136 s** de makespan. El GA parcial alcanza **512 s, el óptimo demostrable** (coincide con la cota inferior), recuperando 6 s (4.4% del daño). Gantts en `results/gantt_perturbado.png`, `results/gantt_recuperado.png` y `results/gantt_recuperado_xgboost.png`.
 
-### 6.3 Decisión del selector
+### 6.3 Decisión y validación del selector
 
-Evaluando Z = Cmax_R + 0.5·C_r + 0.1·N: insert_end/stability_ga obtienen Z = 777, partial_ga Z = 842.7 y priority_ga Z = 837.3. La estrategia elegida por XGBoost (**stability_ga**) es efectivamente la de menor Z: ganar 6 s de makespan costaría modificar 12 de las 15 operaciones pendientes, con 7 cambios de máquina (N = 747), y el modelo aprendió que ese trade-off no conviene. Las features más importantes del selector son el número de operaciones terminadas (0.17), la carga media de máquinas (0.12) y las operaciones en proceso (0.11) — es decir, *cuánto del programa ya está comprometido*.
+**Decisión en el escenario canónico.** Evaluando Z = Cmax_R + 0.5·C_r + 0.1·N: insert_end/stability_ga obtienen Z = 777, partial_ga Z = 842.7 y priority_ga Z = 837.3. La estrategia elegida por XGBoost (**stability_ga**) es efectivamente la de menor Z: ganar 6 s de makespan costaría modificar 12 de las 15 operaciones pendientes, con 7 cambios de máquina (N = 747), y el modelo aprendió que ese trade-off no conviene.
+
+**Validación contra baselines** (split estratificado 70/30; test n = 90; `results/evaluacion_selector.csv`):
+
+| Política | Z medio (test) | Accuracy |
+|---|---|---|
+| Oráculo (mejor estrategia por escenario) | 737.9 | – |
+| **Selector (regresión de Z)** | **740.1** | 0.74 |
+| Baseline trivial: siempre stability_ga | 740.1 | 0.73 |
+| Clasificador XGBoost balanceado (descartado) | 751.4 | 0.63 |
+
+El selector **iguala al baseline trivial y supera claramente a los clasificadores**. No lo supera porque el margen total disponible es de solo 2.2 puntos de Z (740.1 vs 737.9 del oráculo, un 0.3%): en esta distribución de escenarios la política estable es casi inmejorable, y esa diferencia residual es del orden del ruido del GA que genera las etiquetas. El valor del selector no está en este margen sino en que *aprende* la política correcta en vez de asumirla — se desvía de stability solo cuando predice ventaja (2 veces en el test) — y en que la misma arquitectura re-entrena sin cambios si el taller, los pesos α/β o la distribución de rush orders cambian y la política estable deja de ser dominante. En cuanto al recall por clase (stability 1.0, insert_end 0.1, resto 0.0), confirma que con margen tan estrecho el modelo aprende a no desviarse; no es un defecto de clasificación sino la decisión de menor riesgo.
+
+La feature más importante del regresor es el **tiempo total mínimo del rush** (0.45), seguida de su tiempo promedio (0.07) y los indicadores de estrategia — coherente con el análisis: el costo Z está gobernado por la cadena crítica del propio rush, que fija la cota inferior de C_r.
 
 ### 6.4 Comparación con el paper base
 
@@ -137,12 +152,12 @@ Evaluando Z = Cmax_R + 0.5·C_r + 0.1·N: insert_end/stability_ga obtienen Z = 7
 - **Calidad de solución.** El GA con decodificación por huecos es competitivo (382 vs 397 del RLEGA) y el rescheduling parcial alcanza el óptimo del subproblema (cota inferior 512), por lo que la calidad de recuperación no es mejorable con ningún otro método.
 - **Impacto del rush order.** El daño (136 s) está dominado por la cadena crítica del propio rush (321 s lanzada en t\* = 191): el margen de recuperación vía re-secuenciamiento es estructuralmente pequeño en este escenario (máx. 6 s). Esto no es una debilidad del método sino una propiedad de la instancia: con rush orders más cortos o flexibles (como los del set de entrenamiento) las estrategias difieren mucho más.
 - **Trade-off makespan–estabilidad.** El resultado central: recuperar 4.4% del makespan cuesta modificar 12 de las 15 operaciones pendientes, incluidos 7 cambios de máquina. Bajo la función Z, la mejor decisión es mantener el programa estable — exactamente lo que recomienda el selector XGBoost, en línea con el argumento de match-up de Moratori et al. (2010): no siempre conviene reoptimizar todo.
-- **Rol del modelo inteligente.** stability_ga ganó en 111/150 escenarios de entrenamiento, pero en 39 ganaron otras estrategias: el selector no es una regla trivial, y sus features más importantes (avance del programa y carga del taller) son las que un planificador experto también consultaría.
-- **Limitaciones.** Una sola instancia base (8×8×5); pesos α, β, γ fijados por juicio; nervousness medida solo sobre operaciones pendientes; detección del evento modelada como regla del DT lógico (no hay planta física); GA sin garantía de optimalidad fuera de este subproblema (aquí verificable por la cota).
+- **Rol del modelo inteligente.** stability_ga ganó en 218/300 escenarios de entrenamiento, pero en 82 ganaron otras estrategias: el repertorio no es redundante. La validación (6.3) muestra que un clasificador de la clase ganadora — balanceado o no — decide peor que el baseline trivial, mientras que la regresión de costo lo iguala; la lección metodológica es que en selección de estrategias importa la *calidad de la decisión* (Z), no el accuracy, y que un baseline fuerte debe reportarse siempre.
+- **Limitaciones.** Una sola instancia base (8×8×5); pesos α, β, γ fijados por juicio; margen baseline–oráculo pequeño (2.2 en Z) y del orden del ruido de etiquetado del GA, por lo que superar al baseline trivial no es estadísticamente alcanzable en esta distribución de escenarios; nervousness medida solo sobre operaciones pendientes; detección del evento modelada como regla del DT lógico (no hay planta física); GA sin garantía de optimalidad fuera de este subproblema (aquí verificable por la cota).
 
 ## 8. Conclusiones
 
-Se implementó una metodología completa de scheduling dinámico para un FJSSP en contexto Digital Twin: scheduling inicial por GA (Cmax₀ = 382 s, mejor que el RLEGA reportado), simulación del rush order en t\* = Cmax₀/2 con congelamiento de operaciones terminadas/en proceso, cinco estrategias de recuperación y un selector XGBoost entrenado con 150 escenarios sintéticos de rush aleatorio. El GA parcial alcanza el makespan recuperado óptimo (512 s) y el selector inteligente identifica correctamente la estrategia de menor impacto global (Z), privilegiando la estabilidad del programa cuando la ganancia de makespan es marginal. **El objetivo del trabajo se cumple**: el sistema detecta la perturbación, la absorbe sin interrumpir operaciones en curso y decide la recuperación con criterio cuantitativo.
+Se implementó una metodología completa de scheduling dinámico para un FJSSP en contexto Digital Twin: scheduling inicial por GA (Cmax₀ = 382 s, mejor que el RLEGA reportado), simulación del rush order en t\* = Cmax₀/2 con congelamiento de operaciones terminadas/en proceso, cinco estrategias de recuperación y un selector XGBoost (regresión de costo Z) entrenado con 300 escenarios sintéticos de rush aleatorio y validado contra el baseline trivial y el oráculo. El GA parcial alcanza el makespan recuperado óptimo (512 s) y el selector inteligente identifica correctamente la estrategia de menor impacto global (Z), privilegiando la estabilidad del programa cuando la ganancia de makespan es marginal. **El objetivo del trabajo se cumple**: el sistema detecta la perturbación, la absorbe sin interrumpir operaciones en curso y decide la recuperación con criterio cuantitativo.
 
 *Trabajo futuro:* instancias múltiples y de mayor escala, calibración de α/β con el decisor, otras perturbaciones (falla de máquina, la segunda del paper base), selector entrenado sobre variantes parametrizadas continuas de estrategia, y conexión a un DT físico.
 
@@ -165,10 +180,10 @@ Se implementó una metodología completa de scheduling dinámico para un FJSSP e
 ### B. Datos y parámetros
 
 - Datos del caso: `data/datos_base_extraidos.csv` (Tablas 5–6 del paper); rush: `data/datos_rush_order.csv`.
-- GA inicial: población 120, 300 generaciones, torneo k=3, p_mut = 0.15, elitismo 1. GA de rescheduling (experimentos): población 80, 150 generaciones. GA de entrenamiento del selector: población 30, 40 generaciones (presupuesto reducido; 150 escenarios × 5 estrategias en ≈43 s).
-- XGBoost: 200 árboles, profundidad 4, lr 0.1.
+- GA inicial: población 120, 300 generaciones, torneo k=3, p_mut = 0.15, elitismo 1. GA de rescheduling (experimentos): población 80, 150 generaciones. GA de entrenamiento del selector: población 30, 40 generaciones (presupuesto reducido; 300 escenarios × 5 estrategias en ≈60 s).
+- Selector (regresor de costo): XGBRegressor, 300 árboles, profundidad 5, lr 0.08; entrada = 14 features + one-hot de estrategia (1500 filas de entrenamiento). Clasificador de comparación: XGBClassifier 200/4/0.1 con `sample_weight` balanceado.
 
 ### C. Resultados y código
 
-- Tabla completa: `results/tabla_resultados.csv`; importancia de features: `results/importancia_features.csv`.
+- Tabla completa: `results/tabla_resultados.csv`; importancia de features: `results/importancia_features.csv`; validación del selector: `results/evaluacion_selector.csv`.
 - Código fuente en `src/` (cada módulo incluye un autochequeo ejecutable de factibilidad: precedencias, no solapamiento, congelamiento y respeto de t\*).

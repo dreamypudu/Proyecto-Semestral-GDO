@@ -15,7 +15,7 @@ import numpy as np
 from scheduler_ga import DATA, solve_initial
 from rescheduling import STRATEGIES, RUSH_CANONICO, shop_state, apply_strategy
 from metrics import recovery
-from xgboost_selector import FEATURE_NAMES, build_dataset, train, select, features
+from xgboost_selector import FEATURE_NAMES, build_dataset, train, select, evaluate
 from gantt import plot_gantt
 
 try:  # como notebook no existe __file__; se asume cwd = src/
@@ -85,11 +85,31 @@ def main():
     # 4. Recuperacion con selector XGBoost
     print("[4] Entrenando selector XGBoost (escenarios sinteticos, rush aleatorio)...")
     t0 = time.time()
-    X, y = build_dataset(n_escenarios=150, seed=SEED)
-    model = train(X, y, seed=SEED)
+    X, y, Z = build_dataset(n_escenarios=300, seed=SEED)
+    ev = evaluate(X, y, Z, seed=SEED)  # validacion en split estratificado 70/30
+    model = train(X, Z, seed=SEED)     # modelo final: todos los datos
     t_train = time.time() - t0
-    print(f"    dataset={len(y)} escenarios, etiquetas={np.bincount(y, minlength=5)}, "
+    print(f"    dataset={len(y)} escenarios, etiquetas={ev['distribucion']}, "
           f"entrenamiento total {t_train:.0f}s")
+    print(f"    validacion (test n={ev['n_test']}): accuracy={ev['accuracy_global']:.2f}, "
+          f"recall por clase={ev['recall_por_clase']}")
+    print(f"    Z medio test: selector={ev['z_selector']:.1f} | "
+          f"clf balanceado={ev['z_clf_balanceado']:.1f} | "
+          f"baseline siempre-stability={ev['z_baseline_stability']:.1f} | "
+          f"oraculo={ev['z_oraculo']:.1f}")
+    with open(f"{BASE}/results/evaluacion_selector.csv", "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["metrica", "valor"])
+        w.writerow(["escenarios", len(y)])
+        w.writerow(["distribucion_etiquetas", " ".join(map(str, ev["distribucion"]))])
+        w.writerow(["accuracy_global_test", f"{ev['accuracy_global']:.3f}"])
+        for k, v in ev["recall_por_clase"].items():
+            w.writerow([f"recall_{k}", f"{v:.3f}"])
+        w.writerow(["desvios_de_stability_test", ev["desvios_de_stability"]])
+        w.writerow(["z_medio_selector_regresion", f"{ev['z_selector']:.2f}"])
+        w.writerow(["z_medio_clf_balanceado", f"{ev['z_clf_balanceado']:.2f}"])
+        w.writerow(["z_medio_baseline_stability", f"{ev['z_baseline_stability']:.2f}"])
+        w.writerow(["z_medio_oraculo", f"{ev['z_oraculo']:.2f}"])
     t0 = time.time()
     elegida = select(model, st)
     smart = apply_strategy(elegida, st, seed=SEED, **GA_FINAL)
@@ -119,8 +139,10 @@ def main():
         w.writerow(header)
         w.writerows([[f"{v:.1f}" if isinstance(v, float) else v for v in row] for row in rows])
 
-    # importancia de features del selector (anexo del informe)
-    imp = sorted(zip(FEATURE_NAMES, model.feature_importances_), key=lambda x: -x[1])
+    # importancia de features del selector (anexo del informe); el regresor incluye
+    # 5 columnas one-hot de estrategia ademas de las 14 features del taller
+    nombres = FEATURE_NAMES + [f"estrategia_{s}" for s in STRATEGIES]
+    imp = sorted(zip(nombres, model.feature_importances_), key=lambda x: -x[1])
     with open(f"{BASE}/results/importancia_features.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["feature", "importancia"])

@@ -28,9 +28,9 @@ Taller de manufactura de autos personalizados representado por un Digital Twin. 
 ## 5. Modelo inteligente de recuperación — 3 min
 
 - 5 estrategias: insert_end, right_shift, GA parcial, GA prioridad-rush, GA estabilidad.
-- **XGBoost como selector**: 14 features del estado del taller → estrategia de menor Z = CmaxR + 0.5·Cr + 0.1·N.
-- Entrenamiento: 150 escenarios sintéticos con **rush aleatorio en cada iteración**, t\* variable y 3 programas iniciales; etiqueta = estrategia ganadora en Z.
-- Features más importantes: operaciones terminadas, carga media, operaciones en proceso — "cuánto del programa ya está comprometido".
+- **XGBoost como selector**: regresor que predice el costo Z = CmaxR + 0.5·Cr + 0.1·N de cada estrategia dado el estado del taller (14 features) y elige la de menor Z predicho.
+- Entrenamiento: 300 escenarios sintéticos con **rush aleatorio en cada iteración**, t\* variable y 5 programas iniciales. Distribución de ganadoras: stability 218, insert_end 34, priority 22, partial 18, right_shift 8 — fuerte desbalance a favor de la estabilidad.
+- **Validación honesta** (test 70/30): un clasificador de la clase ganadora (balanceado o no) decide *peor* que el baseline trivial "siempre stability"; la regresión de costo lo iguala (Z 740.1 vs 740.1; oráculo 737.9). El margen total disponible es ~2 puntos de Z: en este taller, la política estable es casi inmejorable — y el sistema lo *aprende* en vez de asumirlo.
 
 ## 6. Resultados y Gantt — 4 min
 

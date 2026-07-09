@@ -1,0 +1,14 @@
+metrica,valor
+escenarios,300
+distribucion_etiquetas,34 8 18 22 218
+accuracy_global_test,0.744
+recall_insert_end,0.100
+recall_right_shift,0.000
+recall_partial_ga,0.000
+recall_priority_ga,0.000
+recall_stability_ga,1.000
+desvios_de_stability_test,2
+z_medio_selector_regresion,740.09
+z_medio_clf_balanceado,751.41
+z_medio_baseline_stability,740.09
+z_medio_oraculo,737.87
