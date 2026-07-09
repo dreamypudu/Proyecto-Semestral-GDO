@@ -18,7 +18,9 @@ src/           código fuente
   gantt.py            diagramas de Gantt
   run_experiments.py  ejecuta los 4 experimentos obligatorios y genera resultados
 results/       Gantt inicial / perturbado / recuperado + tabla de resultados
-report/        informe final
+report/        informe final (md/pdf), logica_experimento.md (pipeline detallado +
+               auditoria de errores potenciales), marco_metodologico.md (teoria y
+               bibliografia de la metodologia)
 presentation/  guion y outline de slides (20 min)
 ```
 
