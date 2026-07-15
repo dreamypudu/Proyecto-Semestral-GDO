@@ -69,17 +69,54 @@ $$N = \gamma_1 \underbrace{\sum_{(j,h)\in P}|s_{jh}-s^0_{jh}|}_{N_s} + \gamma_2 
 
 El modelo se resuelve de forma metaheurística (GA); Z se usa como fitness en las variantes orientadas a urgencia/estabilidad y como criterio de etiquetado del selector inteligente.
 
+**Ejemplo numérico de Z** (con los valores del caso de estudio, §6.2, y α=0.5, β=0.1): mantener el programa intacto produce $Cmax_R$=518, $C_r$=518, N=0, luego Z = 518 + 0.5·518 + 0.1·0 = **777**; reoptimizar todas las pendientes produce $Cmax_R$=512, $C_r$=512, N=747, luego Z = 512 + 256 + 74.7 = **842.7**. Los 6 segundos de makespan que gana la reoptimización cuestan 74.7 puntos de penalización por desorden: bajo esta función objetivo, la decisión correcta es no tocar el programa. Este trade-off es el objeto central del trabajo.
+
 ## 5. Metodología
 
 ### 5.1 Extracción de datos
 
 Las Tablas 5 (máquinas factibles) y 6 (tiempos) del paper base se transcribieron a `data/datos_base_extraidos.csv` (8×5 = 40 operaciones, 81 pares operación-máquina). El rush order canónico J9 (`data/datos_rush_order.csv`) es una reedición del modelo 8, consistente con el evento "nueva orden del octavo modelo" del paper.
 
-### 5.2 Scheduling inicial (GA)
+### 5.2 Scheduling inicial (algoritmo genético)
 
-Cromosoma segmentado **MS+OS**: MS asigna una máquina factible a cada operación; OS es una permutación con repetición de los trabajos (40 genes; la k-ésima aparición del trabajo j es su k-ésima operación). El **decodificador** programa cada operación en el primer hueco factible de su máquina (inserción en huecos), respetando precedencia y disponibilidad; el mismo decodificador acepta un estado inicial no vacío (ocupación de máquinas y avance de trabajos), lo que permite reutilizarlo sin cambios para el rescheduling parcial. Operadores: selección por torneo (k=3), crossover POX en OS y uniforme en MS, mutación por reasignación de máquina e intercambio de posiciones, elitismo. Parámetros: población 120, 300 generaciones, semilla 0.
+El GA es la pieza técnica central de la metodología; esta sección lo desarma en sus componentes.
 
-*Justificación del método:* el GA es el método de referencia del propio paper base (su RLEGA es un GA mejorado), maneja de forma natural la codificación mixta asignación+secuencia del FJSSP, y su fitness es intercambiable — lo que permite usar el mismo motor para las variantes con prioridad de rush y con estabilidad.
+#### 5.2.1 Representación: cromosoma de dos segmentos MS+OS
+
+Una solución del FJSSP debe responder dos preguntas por cada operación: *¿en qué máquina?* y *¿en qué orden?* El cromosoma las separa en dos segmentos:
+
+- **MS (Machine Selection):** un vector con una posición por operación (40 en el problema inicial) que indica la máquina elegida, siempre dentro del conjunto factible de la Tabla 5. Ejemplo: J1-O1 es factible en {M3 (38 s), M8 (49 s)}; su gen solo puede valer M3 o M8.
+- **OS (Operation Sequence):** una lista de números de trabajo donde cada trabajo aparece tantas veces como operaciones tiene (8 × 5 = 40 genes). La regla de lectura es la clave: **la k-ésima aparición del trabajo j representa su k-ésima operación**. Ejemplo con dos trabajos de dos operaciones: OS = [2, 1, 1, 2] significa "considerar J2-O1, luego J1-O1, luego J1-O2, luego J2-O2".
+
+La propiedad que justifica esta codificación: **cualquier permutación de OS es válida**. Como las apariciones de j se leen en orden, es imposible expresar "O2 antes que O1" — la precedencia se cumple por construcción y el GA nunca genera ni repara soluciones infactibles.
+
+#### 5.2.2 Decodificación con inserción en huecos (schedules activos)
+
+El decodificador recorre OS y coloca cada operación en el **primer hueco de su máquina donde quepa completa**, nunca antes del término de la operación anterior de su trabajo. Ejemplo: si la máquina está ocupada en [10, 20] y [30, 40], y una operación de duración 8 puede empezar desde t = 12, se coloca en [20, 28] — dentro del hueco — en lugar de apilarse al final en t = 40. La distinción es relevante: apilar al final produce schedules *semi-activos*; rellenar huecos produce schedules *activos*, un subconjunto más pequeño del espacio de soluciones que contiene siempre al óptimo (Giffler & Thompson, 1960). Esta decisión explica parte de la diferencia con el paper base (§6.4).
+
+El mismo decodificador acepta un estado inicial no vacío (máquinas bloqueadas hasta $A_i^t$, trabajos avanzados hasta su última operación congelada), de modo que **programar desde cero y reprogramar tras el rush son el mismo algoritmo con distinto estado de partida** — no hay dos implementaciones que puedan divergir.
+
+#### 5.2.3 Operadores evolutivos
+
+- *Selección por torneo (k=3):* para cada padre se sortean 3 individuos y gana el de mejor fitness. Presión selectiva moderada: los buenos se reproducen más, sin eliminar del todo la diversidad (evita convergencia prematura).
+- *Cruce POX en OS (precedence-preserving order-based crossover):* se sortea un subconjunto de trabajos; el hijo hereda las **posiciones exactas** de esos trabajos desde el padre 1 y rellena los espacios restantes con los demás trabajos **en el orden relativo** del padre 2. Ejemplo con padres [1,2,1,3,2,3] y [3,2,3,1,2,1], conservando {1}: el hijo fija los 1 en las posiciones 1 y 3, y rellena con la secuencia 3,2,3,2 del padre 2 → [1,3,1,2,3,2]. Cada trabajo conserva su número de apariciones, así que el hijo es siempre un OS válido sin reparación.
+- *Cruce uniforme en MS:* cada gen de máquina se hereda de uno u otro padre con probabilidad 1/2 (ambos padres portan solo máquinas factibles, luego el hijo también).
+- *Mutación (p = 0.15):* reasignación de la máquina de una operación al azar (dentro de su conjunto factible) e intercambio de dos posiciones de OS. Aporta la diversidad que el cruce por sí solo no genera.
+- *Elitismo (1):* el mejor individuo pasa intacto a la siguiente generación — la calidad de la mejor solución nunca retrocede.
+
+#### 5.2.4 Presupuestos según el uso
+
+El mismo motor corre con tres presupuestos, dimensionados por el costo pagable en cada contexto:
+
+| Uso | Población × generaciones | Corridas | Tiempo aprox. |
+|---|---|---|---|
+| Scheduling inicial | 120 × 300 | 1 | ~4 s |
+| Rescheduling (experimentos finales) | 80 × 150 | 1 | ~1 s |
+| Etiquetado del dataset del selector | 30 × 40 | 3 (se toma la mediana) | ~0.1 s c/u |
+
+#### 5.2.5 Por qué GA y no un método exacto
+
+El MILP del §4 necesita una variable binaria de orden $y_{ijhkl}$ por cada par de operaciones que comparten una máquina factible: para 40–45 operaciones son miles de binarias unidas por restricciones disyuntivas de constante grande — la estructura que peor escala en solvers exactos. El GA entrega soluciones de calidad en segundos, admite cambiar la función objetivo sin tocar el motor (requisito de las estrategias del §5.4, cada una con su propio fitness) y es el método de referencia del propio paper base (RLEGA es un GA mejorado con aprendizaje por refuerzo). La renuncia a la garantía de optimalidad resultó además auditable: en el subproblema del rush, el GA alcanza la cota inferior aritmética (§6.2), es decir, no dejó calidad sobre la mesa.
 
 ### 5.3 Simulación de la perturbación
 
@@ -93,17 +130,48 @@ En t\* = Cmax₀/2 el DT lógico (capa de monitoreo implementada como regla sobr
 4. **priority_ga:** GA sobre Q minimizando $Cmax_R+\alpha C_r$.
 5. **stability_ga:** GA sobre Q minimizando $Cmax_R+\alpha C_r+\beta N$.
 
-Las tres variantes con GA usan **warm start elitista**: el resultado reportado nunca es peor que las heurísticas deterministas evaluadas con el objetivo de la propia variante. Esto garantiza, por construcción, que `stability_ga` domine o iguale a `insert_end`, y evita que el ruido de convergencia del GA contamine las etiquetas de entrenamiento del selector.
+El menú recorre deliberadamente el espectro clásico del rescheduling (Vieira et al., 2003): las dos primeras son **reparaciones locales** (rápidas, estables, sin optimización) y las tres últimas son **regeneraciones parciales** (reoptimizan, con distinto balance entre desempeño, urgencia y estabilidad). Ninguna domina siempre a las demás — por eso tiene sentido un selector.
+
+Las tres variantes con GA usan **warm start elitista**: el resultado reportado nunca es peor que las heurísticas deterministas evaluadas con el objetivo de la propia variante. La necesidad es empírica, no teórica: con el presupuesto reducido del etiquetado (población 30, 40 generaciones), un GA partiendo de población aleatoria obtiene para `stability_ga` valores Z entre 784 y 811 en el escenario canónico — *peor* que el 777 determinista de `insert_end`, al que en teoría domina. Sin warm start, ese déficit de convergencia contaminaría las etiquetas de entrenamiento del selector (escenarios etiquetados como "gana insert_end" que en realidad son empates); con él, la dominancia queda garantizada por construcción.
 
 ### 5.5 Selector inteligente (XGBoost)
 
-Para cada escenario se extraen **14 features** del estado del taller en t\* (avance, cargas, holguras, tamaño y flexibilidad del rush, saturación, pendientes que compiten por las máquinas del rush; lista completa en `src/xgboost_selector.py`). El dataset de entrenamiento se genera sintéticamente: **300 escenarios** con rush order aleatorio en cada iteración (3–5 operaciones, 1–3 máquinas factibles, tiempos U[30,105]), t\* variable en [0.3, 0.7]·Cmax₀ y cinco schedules iniciales distintos (variación de la carga del taller). Cada escenario se resuelve con las 5 estrategias registrando los componentes (Cmax_R, C_r, N) de cada una; las estrategias con GA se etiquetan con la **mediana de 3 corridas** (semillas distintas), porque una corrida única con presupuesto reducido tiene un ruido mayor que el margen típico entre estrategias. Distribución de estrategias ganadoras: insert_end 33, right_shift 44, partial_ga 9, priority_ga 10, stability_ga 204 (68%).
+#### 5.5.1 Qué es XGBoost y por qué aquí
 
-El desbalance de clases motivó la elección de la arquitectura. Se compararon dos formulaciones bajo la misma validación: (i) **clasificador** XGBoost de la estrategia ganadora con pesos balanceados por clase, y (ii) **regresor de costo** XGBoost que predice Z para cada par (estado, estrategia) y selecciona el argmin. El clasificador decide *peor* que el baseline trivial "elegir siempre stability_ga" (el balanceo fuerza desviaciones hacia clases minoritarias que cuestan más de lo que aportan). Se adoptó la **regresión de costo**, que optimiza directamente la calidad de decisión en vez del accuracy de clasificación (validación en 6.3).
+XGBoost (Chen & Guestrin, 2016) construye un conjunto de árboles de decisión en secuencia: cada árbol nuevo se entrena para corregir el error residual de los anteriores (*gradient boosting*), con regularización que limita el sobreajuste. Es el método de referencia para datos tabulares pequeños: no exige normalización ni ingeniería de features intensiva, tolera colinealidad, expone la importancia de cada variable y predice en microsegundos — compatible con decidir en línea dentro del ciclo del Digital Twin.
+
+#### 5.5.2 El rol del modelo: sustituto (surrogate) del experimento
+
+Saber qué estrategia conviene exige, en principio, ejecutar las cinco y comparar — segundos de GA por estrategia. El selector aprende a **predecir el costo Z de cada estrategia sin ejecutarla**: la entrada es el vector de 14 features del estado del taller concatenado con la codificación one-hot de la estrategia (19 columnas en total; el dataset de 300 escenarios × 5 estrategias produce 1500 filas de entrenamiento), y la salida es el Z predicho. Para decidir se predicen los cinco costos y se toma el argmin. En el momento de la decisión el modelo no ejecuta ningún GA y su salida es **determinista**: toda la aleatoriedad del sistema está en la generación de los datos de entrenamiento, no en la decisión. Hiperparámetros: 300 árboles, profundidad 5, learning rate 0.08.
+
+#### 5.5.3 Las 14 variables predictoras
+
+| Feature | Definición |
+|---|---|
+| `t_frac` | t\*/Cmax₀: fracción del horizonte transcurrida al llegar el rush |
+| `n_terminadas`, `n_proceso`, `n_pendientes` | Tamaños de los conjuntos F, I y P |
+| `carga_media`, `carga_max` | Carga pendiente media y máxima por máquina (tiempo de proceso aún asignado) |
+| `holgura_media` | Holgura promedio de las pendientes: media de (s⁰ − t\*)/Cmax₀ |
+| `rush_maquinas_factibles` | Total de alternativas máquina-operación del rush (su flexibilidad) |
+| `rush_tiempo_min`, `rush_tiempo_medio` | Duración de la cadena del rush sumando mínimos (cota de C_r) y promedios |
+| `saturacion` | Trabajo restante / capacidad disponible: (carga pendiente + rush mínimo) / (m·(Cmax₀ − t\*)) |
+| `cmax0` | Makespan del programa inicial |
+| `avance_tiempo_pct` | Fracción del tiempo de trabajo total ya completada en t\* |
+| `pendientes_en_maquinas_rush` | Operaciones pendientes cuya máquina original compite con las máquinas factibles del rush |
+
+#### 5.5.4 Generación del dataset
+
+**300 escenarios sintéticos**: rush aleatorio en cada iteración (3–5 operaciones; 1–3 máquinas factibles por operación; tiempos U[30,105], el rango empírico de la Tabla 6), t\* ~ U(0.3, 0.7)·Cmax₀ y cinco programas iniciales distintos (variación de la carga del taller). En cada escenario se ejecutan las 5 estrategias registrando los componentes (Cmax_R, C_r, N); las tres con GA se etiquetan con la **mediana de 3 corridas** con semillas distintas, porque el ruido de una corrida única con presupuesto reducido — medido en 26–35 puntos de Z entre semillas — supera el margen típico entre estrategias. Distribución de ganadoras resultante: insert_end 33, right_shift 44, partial_ga 9, priority_ga 10, stability_ga 204 (68%).
+
+#### 5.5.5 Por qué regresión de costo y no clasificación
+
+La formulación ingenua — un clasificador de "qué estrategia gana" — pierde la información de *por cuánto* gana, y con clases desbalanceadas (68% stability) eso es fatal. Considérense dos escenarios: en A, la mejor estrategia le gana a la estable por 1 punto de Z; en B, la estable gana por 60. Un clasificador con pesos balanceados, obligado a atender las clases raras, aprende a desviarse en casos como A (gana 1 punto) al precio de equivocarse en casos como B (pierde 60): compra aciertos baratos pagando errores caros. La teoría de decisión sensible al costo (Elkan, 2001) prescribe la alternativa correcta: aprender el **costo esperado de cada acción** y elegir el argmin, que es exactamente la regresión adoptada. La diferencia empírica es contundente: regret medio 9.43 (clasificador balanceado) contra 1.18 (regresión de costo) — sección 6.3.
 
 ### 5.6 Diseño experimental
 
 Cuatro escenarios obligatorios con semilla fija (reproducibles con `python src/run_experiments.py`): (1) scheduling inicial; (2) rush sin recuperación inteligente; (3) recuperación por GA parcial; (4) recuperación con selector XGBoost. Métricas: Cmax, $C_r$, tiempo computacional, N, operaciones modificadas y % de recuperación $=\frac{Cmax_{pert}-Cmax_{rec}}{Cmax_{pert}-Cmax_0}\times 100$.
+
+**Protocolo de validación del selector.** Los 300 escenarios provienen de 5 programas iniciales base; un split aleatorio pondría escenarios del mismo programa en entrenamiento y test (features correlacionadas → fuga de información → métricas infladas). Se usa por eso **validación cruzada leave-one-group-out**: 5 folds, cada uno deja fuera *todos* los escenarios de un programa base, de modo que cada escenario recibe una predicción de un modelo que jamás vio su taller. Sobre esas predicciones out-of-fold se reportan dos familias de métricas: las de clasificación (accuracy y recall por clase, informativas pero secundarias) y las de **calidad de decisión**, que son las que importan: el Z medio obtenido al seguir cada política y su **regret** — cuánto peor que el oráculo (la mejor estrategia de cada escenario) quedó la política, en promedio. Toda política se compara contra dos referencias obligatorias: el **baseline trivial** "elegir siempre stability_ga" (la mejor política constante) y el **oráculo** (cota inferior inalcanzable). La comparación es pareada: todas las políticas se evalúan sobre los mismos 300 escenarios.
 
 ## 6. Resultados
 
@@ -157,6 +225,8 @@ Si la estabilidad no importara (β=0), la política "siempre stability" ganaría
 La feature más importante del regresor es el **tiempo total mínimo del rush** (0.42), seguida de la carga media de máquinas (0.10) — coherente con el análisis: el costo Z está gobernado por la cadena crítica del propio rush, que fija la cota inferior de C_r. Con las features corregidas, las 14 aportan importancia no nula.
 
 ### 6.4 Comparación con el paper base
+
+**Protocolo de comparación.** Comparar contra resultados publicados exige declarar qué es comparable y qué no. Entre este trabajo y Liu et al. (2022) difieren: el algoritmo (GA clásico vs RLEGA, un GA potenciado con aprendizaje por refuerzo), el esquema de decodificación (activo con inserción en huecos vs no reportado), los parámetros y el presupuesto de iteraciones, el número de corridas (una con semilla fija vs cinco del paper), el entorno de cómputo, y la función objetivo del rescheduling (Z extendida con urgencia y estabilidad vs makespan puro). En consecuencia, la comparación se limita a **coherencia de orden de magnitud** y en ningún punto se afirma superioridad de método:
 
 - **Inicial:** nuestro GA (382) mejora el mejor RLEGA reportado (397). No se afirma réplica: el decodificador con inserción en huecos construye schedules activos (el paper no detalla el suyo), y difieren parámetros, número de corridas, semillas y entorno computacional.
 - **Rescheduling:** el paper reporta 397 → 521 al insertar una nueva orden en t = 200 s; nuestro resultado 382 → 518 (sin recuperación) y → 512 (GA parcial) es consistente en magnitud, con la misma estructura de evento (t\* ≈ 200 s, nueva orden = octavo modelo).
